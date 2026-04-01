@@ -49,20 +49,16 @@ export const mockAI = {
         const data = await res.json();
         onProgress(100);
         
-        // Construct a transcript object from the real text
         return {
-          id: `trans_${Date.now()}`,
           episodeId: `ep_new_${Date.now()}`,
-          text: data.text,
           segments: [
             {
-              id: 1,
-              start: 0,
-              end: 999,
+              startTime: 0,
+              endTime: 999,
               text: data.text,
               speaker: "Speaker 1"
             }
-          ] // Mocking segments for now as Whisper basic JSON doesn't do diarization natively
+          ]
         };
       }
     } catch (e) {
@@ -77,7 +73,7 @@ export const mockAI = {
     return mockTranscripts["ep_50"]; // Always return ep_50 transcript for demo
   },
 
-  generateContent: async (episodeId: string, format: ContentFormat, transcriptText?: string, voiceProfile?: VoiceProfile): Promise<Generation> => {
+  generateContent: async (episodeId: string, format: ContentFormat, transcriptText?: string, voiceProfile?: VoiceProfile): Promise<Generation> => { // eslint-disable-line @typescript-eslint/no-explicit-any
     try {
       // If we have the transcript text passed in, try the real API
       if (transcriptText) {
@@ -94,7 +90,8 @@ export const mockAI = {
             episodeId,
             format,
             content: data.content,
-            status: 'completed',
+            status: 'ready' as const,
+            memoryRefs: [],
             createdAt: new Date().toISOString()
           };
         }
@@ -106,13 +103,13 @@ export const mockAI = {
     await delay(2000); // 2s generation
     const gen = mockGenerations.find(g => g.episodeId === episodeId && g.format === format);
     if (!gen) {
-      // Create a dummy generation if the mock doesn't have it for this specific episode
       return {
         id: `gen_${Date.now()}`,
         episodeId,
         format,
         content: `Mock generated content for ${format}. Real AI integration requires setting up API keys in .env.local`,
-        status: 'completed',
+        status: 'ready' as const,
+        memoryRefs: [],
         createdAt: new Date().toISOString()
       };
     }

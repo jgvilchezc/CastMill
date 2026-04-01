@@ -34,6 +34,7 @@ export type Database = {
           plan?: "free" | "starter" | "pro";
           credits?: number;
         };
+        Relationships: [];
       };
       voice_profiles: {
         Row: {
@@ -63,6 +64,7 @@ export type Database = {
           pacing?: string[];
           common_hooks?: string[];
         };
+        Relationships: [];
       };
       episodes: {
         Row: {
@@ -104,6 +106,7 @@ export type Database = {
           generation_count?: number;
           thumbnail_url?: string | null;
         };
+        Relationships: [];
       };
       transcripts: {
         Row: {
@@ -130,6 +133,7 @@ export type Database = {
           text?: string;
           segments?: Json;
         };
+        Relationships: [];
       };
       generations: {
         Row: {
@@ -159,7 +163,10 @@ export type Database = {
           content?: string;
           status?: "ready" | "generating";
         };
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 };

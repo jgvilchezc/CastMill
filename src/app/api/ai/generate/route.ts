@@ -1,20 +1,8 @@
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const openrouter = createOpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': 'https://castmill.com',
-    'X-Title': 'Castmill',
-  },
-});
-
 export async function POST(req: Request) {
   try {
-    // Verify Supabase session
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -28,8 +16,8 @@ export async function POST(req: Request) {
     }
 
     if (process.env.USE_REAL_AI !== 'true' || !process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json({ 
-        error: "Real AI is disabled or missing API keys. Please configure .env" 
+      return NextResponse.json({
+        error: "Real AI is disabled or missing API keys. Please configure .env"
       }, { status: 501 });
     }
 
@@ -63,22 +51,48 @@ ${voiceProfile ? `You must match this voice profile exactly:
         formatInstructions = `Write a ${format} based on the transcript.`;
     }
 
-    const { text } = await generateText({
-      model: openrouter('meta-llama/llama-3.3-70b-instruct:free'), // Using a free/cheap model via OpenRouter
-      system: systemPrompt,
-      prompt: `${formatInstructions}\n\nHere is the raw podcast transcript:\n\n${transcript}`,
-      temperature: 0.7,
-      maxTokens: 2000,
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://castmill.com',
+        'X-Title': 'Castmill',
+      },
+      body: JSON.stringify({
+        model: 'stepfun/step-3.5-flash:free',
+        models: [
+          'stepfun/step-3.5-flash:free',
+          'nvidia/nemotron-3-nano-30b-a3b:free',
+          'qwen/qwen3.6-plus-preview:free',
+        ],
+        route: 'fallback',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `${formatInstructions}\n\nHere is the raw podcast transcript:\n\n${transcript}` },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      }),
     });
 
-    return NextResponse.json({ 
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error("OpenRouter error:", err);
+      return NextResponse.json({ error: "OpenRouter request failed" }, { status: 500 });
+    }
+
+    const data = await response.json();
+    const text: string = data.choices?.[0]?.message?.content ?? "";
+
+    return NextResponse.json({
       content: text,
       format,
       status: 'completed'
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI Generation Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate content" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate content" }, { status: 500 });
   }
 }

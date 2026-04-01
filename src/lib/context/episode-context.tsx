@@ -228,13 +228,13 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .select("text")
           .eq("episode_id", episodeId)
           .maybeSingle();
-        transcriptText = data?.text;
+        transcriptText = data?.text ?? "";
       }
 
       let content: string;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 50000);
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
         const res = await fetch("/api/ai/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -274,13 +274,9 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...prev.filter(g => g.id !== tempId && !(g.episodeId === episodeId && g.format === format)),
       ]);
 
-      // Bump generation_count
-      await supabase.rpc("increment_generation_count", { episode_id_arg: episodeId }).catch(() => {
-        // rpc may not exist yet; update manually
-        supabase.from("episodes")
-          .update({ generation_count: (episodes.find(e => e.id === episodeId)?.generationCount ?? 0) + 1 })
-          .eq("id", episodeId);
-      });
+      await supabase.from("episodes")
+        .update({ generation_count: (episodes.find(e => e.id === episodeId)?.generationCount ?? 0) + 1 })
+        .eq("id", episodeId);
 
       setEpisodes(prev =>
         prev.map(e => e.id === episodeId ? { ...e, generationCount: e.generationCount + 1 } : e)

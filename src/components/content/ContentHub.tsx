@@ -53,9 +53,18 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
       .map(t => t.format)
     if (formats.length === 0) return
 
-    setPendingFormats(new Set(formats))
-    await Promise.allSettled(formats.map(f => generateContent(episodeId, f)))
-    setPendingFormats(new Set())
+    for (const format of formats) {
+      setPendingFormats(prev => new Set([...prev, format]))
+      try {
+        await generateContent(episodeId, format)
+      } finally {
+        setPendingFormats(prev => {
+          const next = new Set(prev)
+          next.delete(format)
+          return next
+        })
+      }
+    }
     onGenerateAllDone?.()
   }, [episodeId, generateContent, onGenerateAllDone, pendingFormats])
 

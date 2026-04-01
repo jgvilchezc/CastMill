@@ -1,10 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Copy, Check, Download, Loader2, ImageIcon, Sparkles } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
+import MarkdownIt from "markdown-it"
 import { type Generation, type ContentFormat } from "@/lib/context/episode-context"
 import { Button } from "@/components/ui/button"
+
+const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
 
 interface ContentPanelProps {
   format: ContentFormat
@@ -81,9 +84,12 @@ export function ContentPanel({ format, generation, onGenerate }: ContentPanelPro
           exit={{ opacity: 0 }}
           className="space-y-3 py-4"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Generating...
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating...
+            </div>
+            <span className="text-xs text-muted-foreground">~20–40s on free tier</span>
           </div>
           {[...Array(5)].map((_, i) => (
             <div
@@ -102,23 +108,47 @@ export function ContentPanel({ format, generation, onGenerate }: ContentPanelPro
           animate={{ opacity: 1 }}
           className="space-y-4"
         >
-          <div className="flex items-center justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleCopy(generation.content)}>
-              {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-              {copied ? "Copied!" : "Copy"}
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="ghost" size="sm" onClick={onGenerate} className="text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              Regenerate
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleDownload(generation.content)}>
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Download
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => handleCopy(generation.content)}>
+                {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleDownload(generation.content)}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                Download
+              </Button>
+            </div>
           </div>
 
-          <div className="rounded-lg border border-border bg-muted/30 p-4">
-            <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{generation.content.trim()}</pre>
-          </div>
+          <MarkdownContent content={generation.content} />
 
         </motion.div>
       )}
     </AnimatePresence>
+  )
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  const html = useMemo(() => md.render(content.trim()), [content])
+
+  return (
+    <div
+      className="prose prose-sm prose-invert max-w-none rounded-lg border border-border bg-muted/30 p-5
+        prose-headings:font-heading prose-headings:tracking-tight prose-headings:text-foreground
+        prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+        prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/90
+        prose-strong:text-foreground prose-strong:font-semibold
+        prose-em:text-foreground/80
+        prose-ul:text-sm prose-ol:text-sm prose-li:text-foreground/90
+        prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
+        prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:rounded
+        prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }
