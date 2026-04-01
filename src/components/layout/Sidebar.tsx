@@ -82,11 +82,11 @@ export function Sidebar({ onClose }: SidebarProps) {
               <Button variant="ghost" className="w-full h-auto px-2 py-2 justify-start">
                 <div className="flex items-center gap-3 w-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                    <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name ?? user.email ?? ""} />
+                    <AvatarFallback>{(user.name ?? user.email ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate">{user.name}</span>
+                    <span className="text-sm font-medium truncate">{user.name ?? user.email}</span>
                     <div className="flex items-center gap-1.5">
                       <span className={cn("text-xs capitalize px-1.5 py-0.5 rounded font-medium", planColors[user.plan])}>
                         {user.plan}

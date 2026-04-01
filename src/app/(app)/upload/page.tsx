@@ -7,11 +7,9 @@ import { AnimatePresence, motion } from "framer-motion"
 import { DropZone } from "@/components/upload/DropZone"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { mockAI } from "@/lib/mock/mock-ai"
 import { useEpisodes } from "@/lib/context/episode-context"
-import { Episode } from "@/lib/fixtures/episodes"
 
-type Phase = "idle" | "uploading" | "done"
+type Phase = "idle" | "uploading" | "done" | "error"
 
 function getProgressMessage(progress: number): string {
   if (progress < 30) return "Uploading audio..."
@@ -27,37 +25,61 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0)
   const [newEpisodeId, setNewEpisodeId] = useState<string | null>(null)
   const [fileName, setFileName] = useState("")
+  const [errorMsg, setErrorMsg] = useState("")
 
   async function handleFile(file: File) {
     setFileName(file.name)
     setPhase("uploading")
     setProgress(0)
 
-    const episodeId = `ep_new_${Date.now()}`
-
     try {
-      const transcript = await mockAI.transcribeEpisode(file, (p) => setProgress(p))
-
-      const newEpisode: Episode = {
-        id: episodeId,
-        title: file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-        date: new Date().toISOString().split("T")[0],
+      // 1. Create the episode row in Supabase first so we have a real UUID
+      const title = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ")
+      const episode = await addEpisode({
+        title,
+        description: "Newly uploaded episode.",
         duration: 0,
         topics: [],
-        status: "ready",
-        generationCount: 0,
         guests: [],
-        description: "Newly uploaded episode.",
-        thumbnailUrl: "",
+        status: "processing",
+        thumbnailUrl: null,
+      })
+
+      setProgress(15)
+
+      // 2. Transcribe via the API route (real Groq Whisper or mock fallback)
+      const formData = new FormData()
+      formData.append("file", file)
+
+      setProgress(30)
+      const res = await fetch("/api/ai/transcribe", {
+        method: "POST",
+        body: formData,
+      })
+
+      setProgress(80)
+
+      let transcriptText = ""
+      let segments: unknown[] = []
+      if (res.ok) {
+        const data = await res.json()
+        transcriptText = data.text ?? ""
+        segments = data.segments ?? []
+      } else {
+        // Fallback mock transcript when AI isn't configured
+        transcriptText = `[Mock transcript for "${title}". Configure GROQ_API_KEY in .env.local for real transcription.]`
       }
 
-      addEpisode(newEpisode)
-      updateTranscript(episodeId, { ...transcript, episodeId })
+      // 3. Save transcript to Supabase and mark episode as ready
+      await updateTranscript(episode.id, transcriptText, segments)
 
-      setNewEpisodeId(episodeId)
+      setProgress(100)
+      setNewEpisodeId(episode.id)
       setPhase("done")
-    } catch {
-      setPhase("idle")
+    } catch (err: unknown) {
+      console.error(err)
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong.")
+      setPhase("error")
     }
   }
 
@@ -88,14 +110,14 @@ export default function UploadPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="rounded-xl border border-border bg-card p-8 text-center space-y-6"
+            className="border-2 border-border bg-card p-8 text-center space-y-6"
           >
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">{fileName}</p>
-              <p className="text-base font-semibold">{getProgressMessage(progress)}</p>
+              <p className="text-sm font-medium text-muted-foreground font-mono">{fileName}</p>
+              <p className="text-base font-bold font-heading">{getProgressMessage(progress)}</p>
             </div>
             <Progress value={progress} className="h-2" />
-            <p className="text-sm text-muted-foreground">{progress}% complete</p>
+            <p className="text-sm text-muted-foreground font-mono">{progress}% complete</p>
           </motion.div>
         )}
 
@@ -104,21 +126,34 @@ export default function UploadPage() {
             key="done"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-xl border border-border bg-card p-8 text-center space-y-4"
+            className="border-2 border-primary bg-card p-8 text-center space-y-4 shadow-[8px_8px_0_0_var(--color-primary)]"
           >
             <div className="flex justify-center">
-              <div className="rounded-full bg-green-100 dark:bg-green-900 p-4">
-                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+              <div className="bg-primary/10 p-4 border-2 border-primary">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold">Transcription complete!</h3>
+              <h3 className="text-lg font-bold font-heading uppercase tracking-tight">Transcription complete!</h3>
               <p className="text-sm text-muted-foreground mt-1">Your episode is ready. Generate content assets now.</p>
             </div>
             <Button onClick={() => router.push(`/episode/${newEpisodeId}`)}>
               View Episode
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
+          </motion.div>
+        )}
+
+        {phase === "error" && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="border-2 border-destructive bg-destructive/10 p-8 text-center space-y-4"
+          >
+            <p className="font-bold text-destructive font-heading uppercase">Upload failed</p>
+            <p className="text-sm text-muted-foreground font-mono">{errorMsg}</p>
+            <Button variant="outline" onClick={() => setPhase("idle")}>Try again</Button>
           </motion.div>
         )}
       </AnimatePresence>

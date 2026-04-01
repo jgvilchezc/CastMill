@@ -1,15 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   FileText, Twitter, Linkedin, Mail, Youtube, ImageIcon, Loader2, CheckCircle2,
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ContentPanel } from "./ContentPanel"
-import { Generation, ContentFormat } from "@/lib/fixtures/generations"
-import { mockAI } from "@/lib/mock/mock-ai"
-
-type GenerationState = Generation | "generating" | null
+import { useEpisodes, type ContentFormat, type Generation } from "@/lib/context/episode-context"
 
 const TABS: { format: ContentFormat; label: string; icon: React.ElementType }[] = [
   { format: "blog", label: "Blog", icon: FileText },
@@ -28,41 +25,40 @@ interface ContentHubProps {
 }
 
 export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, onGenerateAllDone }: ContentHubProps) {
-  const [generationMap, setGenerationMap] = useState<Record<ContentFormat, GenerationState>>(() => {
-    const map = {} as Record<ContentFormat, GenerationState>
-    for (const tab of TABS) {
-      const existing = initialGenerations.find(
-        (g) => g.format === tab.format && g.episodeId === episodeId
-      )
-      map[tab.format] = existing ?? null
+  const { generateContent } = useEpisodes()
+  const [pendingFormats, setPendingFormats] = useState<Set<ContentFormat>>(new Set())
+
+  const getState = (format: ContentFormat): Generation | "generating" | null => {
+    if (pendingFormats.has(format)) return "generating"
+    return initialGenerations.find(g => g.format === format && g.episodeId === episodeId) ?? null
+  }
+
+  const generateSingle = useCallback(async (format: ContentFormat) => {
+    if (format === "thumbnail") return
+    setPendingFormats(prev => new Set([...prev, format]))
+    try {
+      await generateContent(episodeId, format)
+    } finally {
+      setPendingFormats(prev => {
+        const next = new Set(prev)
+        next.delete(format)
+        return next
+      })
     }
-    return map
-  })
+  }, [episodeId, generateContent])
 
   const handleGenerateAll = useCallback(async () => {
-    const formatsToGenerate = TABS.filter((t) => t.format !== "thumbnail").map((t) => t.format)
-    setGenerationMap((prev) => {
-      const next = { ...prev }
-      for (const f of formatsToGenerate) {
-        next[f] = "generating"
-      }
-      return next
-    })
-    await Promise.allSettled(
-      formatsToGenerate.map(async (format) => {
-        try {
-          const sourceId = episodeId === "ep_50" ? episodeId : "ep_50"
-          const result = await mockAI.generateContent(sourceId, format)
-          setGenerationMap((prev) => ({ ...prev, [format]: { ...result, episodeId } }))
-        } catch {
-          setGenerationMap((prev) => ({ ...prev, [format]: null }))
-        }
-      })
-    )
-    onGenerateAllDone?.()
-  }, [episodeId, onGenerateAllDone])
+    const formats = TABS
+      .filter(t => t.format !== "thumbnail" && !pendingFormats.has(t.format))
+      .map(t => t.format)
+    if (formats.length === 0) return
 
-  // Trigger generate all from parent
+    setPendingFormats(new Set(formats))
+    await Promise.allSettled(formats.map(f => generateContent(episodeId, f)))
+    setPendingFormats(new Set())
+    onGenerateAllDone?.()
+  }, [episodeId, generateContent, onGenerateAllDone, pendingFormats])
+
   useEffect(() => {
     if (triggerGenerateAll) {
       handleGenerateAll()
@@ -70,24 +66,11 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerGenerateAll])
 
-  async function generateSingle(format: ContentFormat) {
-    if (format === "thumbnail") return
-    setGenerationMap((prev) => ({ ...prev, [format]: "generating" }))
-    try {
-      // Use ep_50 as the source for mock data regardless of episode id
-      const sourceId = episodeId === "ep_50" ? episodeId : "ep_50"
-      const result = await mockAI.generateContent(sourceId, format)
-      setGenerationMap((prev) => ({ ...prev, [format]: { ...result, episodeId } }))
-    } catch {
-      setGenerationMap((prev) => ({ ...prev, [format]: null }))
-    }
-  }
-
   return (
     <Tabs defaultValue="blog">
       <TabsList className="flex flex-wrap h-auto gap-1 mb-4">
         {TABS.map(({ format, label, icon: Icon }) => {
-          const state = generationMap[format]
+          const state = getState(format)
           return (
             <TabsTrigger key={format} value={format} className="gap-1.5">
               <Icon className="h-3.5 w-3.5" />
@@ -96,7 +79,7 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
                 <Loader2 className="h-3 w-3 animate-spin ml-0.5" />
               )}
               {state && state !== "generating" && format !== "thumbnail" && (
-                <CheckCircle2 className="h-3 w-3 text-green-500 ml-0.5" />
+                <CheckCircle2 className="h-3 w-3 text-primary ml-0.5" />
               )}
             </TabsTrigger>
           )
@@ -107,7 +90,7 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
         <TabsContent key={format} value={format}>
           <ContentPanel
             format={format}
-            generation={generationMap[format]}
+            generation={getState(format)}
             onGenerate={() => generateSingle(format)}
           />
         </TabsContent>

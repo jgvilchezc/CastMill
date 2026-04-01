@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Copy, Check, Download, Loader2, ImageIcon, Sparkles } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Generation, ContentFormat } from "@/lib/fixtures/generations"
+import { type Generation, type ContentFormat } from "@/lib/context/episode-context"
 import { Button } from "@/components/ui/button"
 
 interface ContentPanelProps {
@@ -117,12 +117,6 @@ export function ContentPanel({ format, generation, onGenerate }: ContentPanelPro
             <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{generation.content.trim()}</pre>
           </div>
 
-          {generation.memoryRefs.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              <span className="font-medium">Referenced: </span>
-              {generation.memoryRefs.join(", ")}
-            </div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>

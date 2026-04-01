@@ -1,26 +1,17 @@
 "use client"
 
-import { useState } from "react"
 import { Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface GenerateAllButtonProps {
   onGenerate: () => void
+  isGenerating: boolean
 }
 
-export function GenerateAllButton({ onGenerate }: GenerateAllButtonProps) {
-  const [generating, setGenerating] = useState(false)
-
-  function handleClick() {
-    setGenerating(true)
-    onGenerate()
-    // Reset after a reasonable timeout (content hub handles actual state)
-    setTimeout(() => setGenerating(false), 12000)
-  }
-
+export function GenerateAllButton({ onGenerate, isGenerating }: GenerateAllButtonProps) {
   return (
-    <Button onClick={handleClick} disabled={generating} size="lg">
-      {generating ? (
+    <Button onClick={onGenerate} disabled={isGenerating} size="lg">
+      {isGenerating ? (
         <>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           Generating...

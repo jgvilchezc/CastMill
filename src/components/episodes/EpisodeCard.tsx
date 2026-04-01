@@ -6,7 +6,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Episode } from "@/lib/fixtures/episodes"
+import { type Episode } from "@/lib/context/episode-context"
 import { EpisodeStatusBadge } from "./EpisodeStatusBadge"
 import { formatDuration } from "@/lib/utils"
 

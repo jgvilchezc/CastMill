@@ -15,17 +15,18 @@ export default function EpisodePage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const { episodes, transcripts, generations, selectEpisode } = useEpisodes()
-  const [triggerGenAll, setTriggerGenAll] = useState(false)
+  const { episodes, transcripts, generations, selectEpisode, refreshEpisode } = useEpisodes()
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false)
 
   useEffect(() => {
     selectEpisode(id)
+    refreshEpisode(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const episode = episodes.find((e) => e.id === id)
   const transcript = transcripts[id]
-  const episodeGenerations = generations.filter((g) => g.episodeId === id || g.episodeId === "ep_50")
+  const episodeGenerations = generations.filter((g) => g.episodeId === id)
 
   if (!episode) {
     return (
@@ -64,10 +65,8 @@ export default function EpisodePage() {
             </div>
           </div>
           <GenerateAllButton
-            onGenerate={() => {
-              setTriggerGenAll(true)
-              setTimeout(() => setTriggerGenAll(false), 100)
-            }}
+            onGenerate={() => setIsGeneratingAll(true)}
+            isGenerating={isGeneratingAll}
           />
         </div>
       </div>
@@ -83,13 +82,13 @@ export default function EpisodePage() {
           <TranscriptView transcript={transcript} />
         </TabsContent>
 
-        <TabsContent value="content">
+        <TabsContent value="content" forceMount className="data-[state=inactive]:hidden">
           <ContentHub
             key={id}
             episodeId={id}
             initialGenerations={episodeGenerations}
-            triggerGenerateAll={triggerGenAll}
-            onGenerateAllDone={() => setTriggerGenAll(false)}
+            triggerGenerateAll={isGeneratingAll}
+            onGenerateAllDone={() => setIsGeneratingAll(false)}
           />
         </TabsContent>
       </Tabs>
