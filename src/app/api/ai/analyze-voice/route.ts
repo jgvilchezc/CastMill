@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     // We use Gemini Flash for context analysis because of its large context window and it's free/fast
     const { object } = await generateObject({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.0-flash'),
       system: `You are an expert linguist and copywriter. Analyze the provided text samples from a creator and determine their "Voice Profile". Extract their core tone, vocabulary style, pacing, and how they typically hook their audience.`,
       prompt: `Analyze the following texts and generate a voice profile:\n\n${texts.join('\n\n---\n\n')}`,
       schema: z.object({

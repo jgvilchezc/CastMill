@@ -34,7 +34,6 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
   }
 
   const generateSingle = useCallback(async (format: ContentFormat) => {
-    if (format === "thumbnail") return
     setPendingFormats(prev => new Set([...prev, format]))
     try {
       await generateContent(episodeId, format)
@@ -49,7 +48,7 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
 
   const handleGenerateAll = useCallback(async () => {
     const formats = TABS
-      .filter(t => t.format !== "thumbnail" && !pendingFormats.has(t.format))
+      .filter(t => !pendingFormats.has(t.format))
       .map(t => t.format)
     if (formats.length === 0) return
 
@@ -87,7 +86,7 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
               {state === "generating" && (
                 <Loader2 className="h-3 w-3 animate-spin ml-0.5" />
               )}
-              {state && state !== "generating" && format !== "thumbnail" && (
+              {state && state !== "generating" && (
                 <CheckCircle2 className="h-3 w-3 text-primary ml-0.5" />
               )}
             </TabsTrigger>

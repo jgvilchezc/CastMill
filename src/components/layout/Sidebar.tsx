@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Upload, Brain, Settings, Zap, LogOut, ChevronUp } from "lucide-react"
+import { LayoutDashboard, Upload, Brain, Settings, Zap, LogOut, ChevronUp, Youtube } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/lib/context/user-context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -19,6 +19,7 @@ import {
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "New Episode", icon: Upload, href: "/upload" },
+  { label: "Channel Optimizer", icon: Youtube, href: "/channel" },
   { label: "Memory", icon: Brain, href: "/memory", disabled: true },
   { label: "Settings", icon: Settings, href: "/settings", disabled: true },
 ]

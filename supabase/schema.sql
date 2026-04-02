@@ -124,3 +124,56 @@ create policy "Users can manage own generations"
 -- Unique constraints for upsert operations
 alter table public.transcripts add constraint transcripts_episode_id_unique unique (episode_id);
 alter table public.generations add constraint generations_episode_format_unique unique (episode_id, format);
+
+
+-- 6. CHANNELS
+create table if not exists public.channels (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null references auth.users(id) on delete cascade,
+  created_at         timestamptz not null default now(),
+  youtube_channel_id text not null,
+  title              text not null default '',
+  handle             text,
+  description        text,
+  thumbnail_url      text,
+  subscriber_count   bigint not null default 0,
+  video_count        int    not null default 0,
+  view_count         bigint not null default 0,
+  access_type        text   not null default 'public' check (access_type in ('public', 'oauth')),
+  analysis           jsonb,
+  analyzed_at        timestamptz,
+  unique (user_id, youtube_channel_id)
+);
+
+alter table public.channels enable row level security;
+
+create policy "Users can manage own channels"
+  on public.channels for all
+  using (auth.uid() = user_id);
+
+
+-- 7. CHANNEL VIDEOS
+create table if not exists public.channel_videos (
+  id               uuid primary key default gen_random_uuid(),
+  channel_id       uuid not null references public.channels(id) on delete cascade,
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  created_at       timestamptz not null default now(),
+  youtube_video_id text not null,
+  title            text not null default '',
+  description      text,
+  thumbnail_url    text,
+  view_count       bigint not null default 0,
+  like_count       bigint not null default 0,
+  comment_count    bigint not null default 0,
+  duration_seconds int    not null default 0,
+  published_at     timestamptz,
+  transcript       jsonb,
+  viral_moments    jsonb,
+  unique (channel_id, youtube_video_id)
+);
+
+alter table public.channel_videos enable row level security;
+
+create policy "Users can manage own channel videos"
+  on public.channel_videos for all
+  using (auth.uid() = user_id);

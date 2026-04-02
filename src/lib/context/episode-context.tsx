@@ -235,12 +235,25 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90000);
-        const res = await fetch("/api/ai/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ format, transcript: transcriptText }),
-          signal: controller.signal,
-        });
+
+        let res: Response;
+        if (format === "thumbnail") {
+          const episode = episodes.find((e) => e.id === episodeId);
+          res = await fetch("/api/ai/generate-thumbnail", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: episode?.title ?? "", transcript: transcriptText }),
+            signal: controller.signal,
+          });
+        } else {
+          res = await fetch("/api/ai/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ format, transcript: transcriptText }),
+            signal: controller.signal,
+          });
+        }
+
         clearTimeout(timeoutId);
 
         if (res.ok) {

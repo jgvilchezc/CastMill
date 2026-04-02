@@ -65,8 +65,8 @@ export default function LandingPage() {
       }
     );
 
-    // 4. Horizontal Scroll (The Pipeline)
-    if (horizontalRef.current && horizontalWrapRef.current) {
+    // 4. Horizontal Scroll (The Pipeline) — desktop only
+    if (horizontalRef.current && horizontalWrapRef.current && window.innerWidth >= 768) {
       const scrollEl = horizontalRef.current;
       
       gsap.to(scrollEl, {
@@ -115,13 +115,13 @@ export default function LandingPage() {
   }, { scope: containerRef });
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background relative selection:bg-primary selection:text-primary-foreground">
+    <div ref={containerRef} className="min-h-screen bg-background relative selection:bg-primary selection:text-primary-foreground overflow-x-hidden">
       
       {/* Global Decorative Backgrounds */}
       <div className="bg-parallax fixed inset-0 z-0 bg-dot-pattern opacity-30 mix-blend-overlay pointer-events-none"></div>
       
       {/* Navigation */}
-      <nav className="absolute top-0 w-full z-50 flex items-center justify-between p-6 max-w-screen-2xl mx-auto mix-blend-difference text-white">
+      <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-5 mix-blend-difference text-white">
         <div className="flex items-center gap-2">
           <Mic className="w-8 h-8 text-primary" />
           <span className="font-heading font-bold text-2xl tracking-tighter">Castmill</span>
@@ -147,12 +147,13 @@ export default function LandingPage() {
             <span className="text-sm font-bold tracking-widest uppercase font-mono">The AI podcast multiplier is live</span>
           </div>
 
-          <h1 className="text-6xl md:text-8xl lg:text-[9rem] font-heading font-extrabold tracking-tighter leading-[0.85] mb-8 text-foreground uppercase perspective-1000">
+          <h1 className="font-heading font-extrabold tracking-tighter leading-[0.85] mb-8 text-foreground uppercase perspective-1000"
+            style={{ fontSize: "clamp(2.8rem, 12vw, 9rem)" }}>
             <div className="overflow-hidden pb-2"><div className="hero-title-line">TURN AUDIO</div></div>
             <div className="overflow-hidden pb-2"><div className="hero-title-line">INTO <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-chart-4">CULTURE.</span></div></div>
           </h1>
 
-          <p className="hero-desc text-xl md:text-3xl text-muted-foreground max-w-3xl mb-12 leading-relaxed font-mono">
+          <p className="hero-desc text-base md:text-2xl text-muted-foreground max-w-3xl mb-12 leading-relaxed font-mono">
             Upload one podcast episode. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.
           </p>
 
@@ -160,11 +161,11 @@ export default function LandingPage() {
             <Button 
               asChild 
               size="lg" 
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xl h-20 px-12 rounded-none group shadow-[8px_8px_0_0_rgba(255,255,255,0.1)] hover:shadow-[4px_4px_0_0_rgba(255,255,255,0.1)] hover:translate-y-1 hover:translate-x-1 transition-all"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-base md:text-xl h-16 md:h-20 px-8 md:px-12 rounded-none group shadow-[8px_8px_0_0_rgba(255,255,255,0.1)] hover:shadow-[4px_4px_0_0_rgba(255,255,255,0.1)] hover:translate-y-1 hover:translate-x-1 transition-all w-full sm:w-auto"
             >
-              <Link href="/register" className="flex items-center gap-3">
+              <Link href="/register" className="flex items-center justify-center gap-3">
                 START CREATING
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                <ArrowRight className="w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-2 transition-transform" />
               </Link>
             </Button>
           </div>
@@ -172,8 +173,8 @@ export default function LandingPage() {
       </main>
 
       {/* Marquee Section */}
-      <section className="relative z-10 w-full bg-primary text-primary-foreground py-6 border-y-4 border-foreground overflow-hidden flex whitespace-nowrap">
-        <div className="marquee-inner flex font-heading font-black text-4xl md:text-6xl uppercase tracking-tighter w-max">
+      <section className="relative z-10 w-full bg-primary text-primary-foreground py-4 md:py-6 border-y-4 border-foreground overflow-hidden flex whitespace-nowrap">
+        <div className="marquee-inner flex font-heading font-black text-3xl md:text-6xl uppercase tracking-tighter w-max">
           <span className="px-8">AI GENERATED</span> • 
           <span className="px-8">VIRAL CLIPS</span> • 
           <span className="px-8">SEO BLOGS</span> • 
@@ -190,14 +191,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Horizontal Scroll / The Pipeline */}
-      <section ref={horizontalWrapRef} className="h-screen w-full bg-zinc-950 flex flex-col justify-center overflow-hidden relative border-b-4 border-border">
+      {/* Horizontal Scroll / The Pipeline — desktop only */}
+      <section ref={horizontalWrapRef} className="hidden md:flex h-screen w-full bg-zinc-950 flex-col justify-center overflow-hidden relative border-b-4 border-border">
         <div className="absolute top-12 left-12 md:top-24 md:left-24 z-10 mix-blend-difference pointer-events-none">
           <h2 className="text-white font-heading font-extrabold text-6xl md:text-8xl uppercase tracking-tighter opacity-20">The Pipeline</h2>
         </div>
         
         <div ref={horizontalRef} className="flex gap-12 px-12 md:px-32 items-center w-max h-full">
-          {/* Step 1 */}
           <div className="w-[85vw] md:w-[60vw] lg:w-[40vw] h-[60vh] bg-background border-4 border-primary p-8 md:p-12 flex flex-col justify-between shrink-0 shadow-[16px_16px_0_0_var(--color-primary)]">
              <div>
                <span className="font-mono text-primary font-bold text-xl mb-4 block">STEP 01</span>
@@ -207,7 +207,6 @@ export default function LandingPage() {
              <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Drop your raw MP3/WAV file. We transcribe it with superhuman accuracy, recognizing speakers and context automatically.</p>
           </div>
           
-          {/* Step 2 */}
           <div className="w-[85vw] md:w-[60vw] lg:w-[40vw] h-[60vh] bg-background border-4 border-chart-4 p-8 md:p-12 flex flex-col justify-between shrink-0 shadow-[16px_16px_0_0_var(--color-chart-4)]">
              <div>
                <span className="font-mono text-chart-4 font-bold text-xl mb-4 block">STEP 02</span>
@@ -217,7 +216,6 @@ export default function LandingPage() {
              <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Our engine extracts the juiciest hooks, controversial takes, and high-value insights hidden in your hour-long episode.</p>
           </div>
           
-          {/* Step 3 */}
           <div className="w-[85vw] md:w-[60vw] lg:w-[40vw] h-[60vh] bg-background border-4 border-foreground p-8 md:p-12 flex flex-col justify-between shrink-0 shadow-[16px_16px_0_0_var(--color-foreground)]">
              <div>
                <span className="font-mono text-foreground font-bold text-xl mb-4 block">STEP 03</span>
@@ -227,17 +225,38 @@ export default function LandingPage() {
              <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Instantly get ready-to-publish viral clips, SEO-optimized blog posts, show notes, and captivating newsletters.</p>
           </div>
 
-          {/* End cap */}
           <div className="w-[20vw] flex items-center justify-center shrink-0">
              <ArrowRight className="w-32 h-32 text-primary animate-pulse" />
           </div>
         </div>
       </section>
 
+      {/* Pipeline — mobile vertical stack */}
+      <section className="md:hidden w-full bg-zinc-950 border-b-4 border-border px-5 py-16 overflow-hidden">
+        <h2 className="font-heading font-extrabold uppercase tracking-tighter text-white opacity-20 mb-10"
+          style={{ fontSize: "clamp(2rem, 10vw, 5rem)" }}>The Pipeline</h2>
+        <div className="flex flex-col gap-8">
+          {[
+            { step: "01", title: "Upload &\nTranscribe", icon: AudioLines, color: "border-primary text-primary", shadow: "shadow-[8px_8px_0_0_var(--color-primary)]", desc: "Drop your raw MP3/WAV file. We transcribe it with superhuman accuracy." },
+            { step: "02", title: "AI Context\nAnalysis", icon: Zap, color: "border-chart-4 text-chart-4", shadow: "shadow-[8px_8px_0_0_var(--color-chart-4)]", desc: "Extracts the juiciest hooks, controversial takes, and high-value insights." },
+            { step: "03", title: "Content\nMultiplication", icon: Share2, color: "border-foreground text-foreground", shadow: "shadow-[8px_8px_0_0_var(--color-foreground)]", desc: "Instantly get blogs, show notes, newsletters, and social threads." },
+          ].map(({ step, title, icon: Icon, color, shadow, desc }) => (
+            <div key={step} className={`border-4 ${color} ${shadow} bg-background p-7 flex flex-col gap-4`}>
+              <span className="font-mono font-bold text-base">STEP {step}</span>
+              <h3 className="font-heading font-black uppercase tracking-tighter leading-tight whitespace-pre-line"
+                style={{ fontSize: "clamp(1.5rem, 8vw, 2.5rem)" }}>{title}</h3>
+              <Icon className="w-14 h-14 opacity-50" />
+              <p className="font-mono text-muted-foreground text-sm leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Features Grid */}
-      <section className="relative z-10 w-full max-w-screen-2xl mx-auto px-6 py-32">
+      <section className="relative z-10 w-full max-w-screen-2xl mx-auto px-6 py-20 md:py-32 overflow-hidden">
         <div className="mb-20 text-center md:text-left">
-          <h2 className="text-5xl md:text-7xl font-heading font-black uppercase tracking-tighter leading-none mb-6">Everything you need<br/><span className="text-primary">to dominate algorithms.</span></h2>
+          <h2 className="font-heading font-black uppercase tracking-tighter leading-none mb-6 break-words"
+            style={{ fontSize: "clamp(1.6rem, 7vw, 5rem)" }}>Everything you need<br/><span className="text-primary">to dominate algorithms.</span></h2>
           <p className="text-2xl font-mono text-muted-foreground max-w-2xl">Stop doing manual labor. Let AI handle the distribution while you focus on recording.</p>
         </div>
 
@@ -265,7 +284,8 @@ export default function LandingPage() {
       <section className="cta-section relative z-10 w-full min-h-[80vh] bg-primary flex flex-col items-center justify-center overflow-hidden border-t-4 border-foreground text-primary-foreground">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
         
-        <h2 className="cta-massive-text text-[10vw] md:text-[12vw] font-heading font-black uppercase tracking-tighter leading-none text-center whitespace-nowrap mb-12">
+        <h2 className="cta-massive-text font-heading font-black uppercase tracking-tighter leading-none text-center mb-12 px-4"
+          style={{ fontSize: "clamp(3rem, 14vw, 12vw)" }}>
           GO VIRAL <br/>
           <span className="text-foreground">TODAY.</span>
         </h2>
@@ -273,11 +293,11 @@ export default function LandingPage() {
         <Button 
           asChild 
           size="lg" 
-          className="bg-foreground text-background hover:bg-foreground/90 font-bold text-2xl h-24 px-16 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,0.5)] hover:translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0_0_rgba(0,0,0,0.5)] transition-all z-10"
+          className="bg-foreground text-background hover:bg-foreground/90 font-bold text-lg md:text-2xl h-16 md:h-24 px-10 md:px-16 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,0.5)] hover:translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0_0_rgba(0,0,0,0.5)] transition-all z-10"
         >
-          <Link href="/register" className="flex items-center gap-4">
+          <Link href="/register" className="flex items-center gap-3">
             START FOR FREE
-            <Zap className="w-8 h-8" />
+            <Zap className="w-6 h-6 md:w-8 md:h-8" />
           </Link>
         </Button>
       </section>
