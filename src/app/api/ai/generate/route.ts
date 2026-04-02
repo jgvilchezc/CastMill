@@ -56,7 +56,7 @@ ${voiceProfile ? `You must match this voice profile exactly:
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://castmill.com',
+        'HTTP-Referer': 'https://expandcast.com',
         'X-Title': 'Castmill',
       },
       body: JSON.stringify({

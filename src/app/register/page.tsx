@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Mic, ArrowRight, Zap, AlertCircle } from "lucide-react";
+import { ArrowRight, Zap, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { register } from "@/app/actions/auth";
@@ -18,8 +18,8 @@ export default function RegisterPage() {
         <div className="absolute -bottom-1/4 -right-1/4 w-120 h-120 bg-chart-4/20 rounded-full blur-[128px] z-0 mix-blend-screen"></div>
 
         <div className="relative z-10 flex items-center gap-2">
-          <Mic className="w-8 h-8 text-primary" />
-          <span className="font-heading font-bold text-2xl tracking-tighter text-white">Castmill</span>
+          <Zap className="w-8 h-8 text-primary" />
+          <span className="font-heading font-bold text-2xl tracking-tighter text-white">Expandcast</span>
         </div>
 
         <div className="relative z-10 max-w-lg">
@@ -28,23 +28,23 @@ export default function RegisterPage() {
             <span>Join the Beta</span>
           </div>
           <h2 className="text-5xl font-heading font-extrabold tracking-tighter text-white mb-6 leading-tight">
-            MULTIPLY YOUR <span className="text-chart-4">REACH.</span>
+            EXPAND YOUR <span className="text-chart-4">REACH.</span>
           </h2>
           <p className="text-zinc-400 text-lg">
-            Create an account to start turning your single podcast episode into weeks of social content automatically.
+            Create an account and turn any video or audio into weeks of social content automatically.
           </p>
         </div>
 
         <div className="relative z-10 text-sm text-zinc-500 font-mono">
-          © {new Date().getFullYear()} CASTMILL INC.
+          © {new Date().getFullYear()} EXPANDCAST INC.
         </div>
       </div>
 
       {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background relative">
         <div className="absolute top-8 left-8 flex lg:hidden items-center gap-2">
-          <Mic className="w-8 h-8 text-primary" />
-          <span className="font-heading font-bold text-2xl tracking-tighter">Castmill</span>
+          <Zap className="w-8 h-8 text-primary" />
+          <span className="font-heading font-bold text-2xl tracking-tighter">Expandcast</span>
         </div>
 
         <div className="w-full max-w-md flex flex-col gap-8">

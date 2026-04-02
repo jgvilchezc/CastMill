@@ -42,7 +42,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     <div className="flex h-full flex-col bg-card border-r border-border">
       {/* Logo */}
       <div className="flex h-14 items-center px-4 border-b border-border">
-        <span className="text-lg font-bold tracking-tight">Castmill</span>
+        <span className="text-lg font-bold tracking-tight">Expandcast</span>
       </div>
 
       {/* Nav */}

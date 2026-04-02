@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Castmill — Turn Audio Into Culture";
+export const alt = "Expandcast — Expand Your Content. Multiply Your Reach.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -51,7 +51,7 @@ export default function OGImage() {
           }}
         >
           <span style={{ fontSize: "13px", color: "#a3e635", letterSpacing: "2px", fontWeight: 600 }}>
-            ✦ THE AI PODCAST MULTIPLIER
+            ✦ THE AI CONTENT MULTIPLIER
           </span>
         </div>
 
@@ -74,7 +74,7 @@ export default function OGImage() {
               textTransform: "uppercase",
             }}
           >
-            TURN AUDIO
+            EXPAND YOUR
           </span>
           <span
             style={{
@@ -85,7 +85,7 @@ export default function OGImage() {
               textTransform: "uppercase",
             }}
           >
-            INTO CULTURE.
+            CONTENT.
           </span>
         </div>
 
@@ -100,7 +100,7 @@ export default function OGImage() {
             margin: 0,
           }}
         >
-          Upload a podcast episode. Generate blogs, tweets, newsletters & more — instantly.
+          Drop any video or audio. Generate blogs, tweets, newsletters & more — instantly.
         </p>
 
         {/* Bottom domain */}
@@ -114,7 +114,7 @@ export default function OGImage() {
           }}
         >
           <span style={{ fontSize: "16px", color: "rgba(255,255,255,0.3)", letterSpacing: "1px" }}>
-            cast-mill.vercel.app
+            expandcast.com
           </span>
         </div>
       </div>

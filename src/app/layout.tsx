@@ -15,51 +15,54 @@ const fontSans = DM_Sans({
   display: "swap",
 });
 
-const siteUrl = "https://cast-mill.vercel.app";
+const siteUrl = "https://expandcast.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Castmill — Turn Audio Into Culture",
-    template: "%s | Castmill",
+    default: "Expandcast — Expand Your Content. Multiply Your Reach.",
+    template: "%s | Expandcast",
   },
   description:
-    "Upload one podcast episode. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.",
+    "Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds. For every type of creator.",
   keywords: [
-    "podcast",
+    "content repurposing",
     "AI content generation",
-    "podcast to blog",
+    "video to blog",
     "podcast repurposing",
     "content multiplier",
-    "newsletter from podcast",
+    "YouTube to newsletter",
     "tweet thread generator",
+    "content creator tools",
+    "viral clips",
+    "social media automation",
   ],
-  authors: [{ name: "Castmill" }],
-  creator: "Castmill",
+  authors: [{ name: "Expandcast" }],
+  creator: "Expandcast",
   openGraph: {
     type: "website",
     locale: "en_US",
     url: siteUrl,
-    siteName: "Castmill",
-    title: "Castmill — Turn Audio Into Culture",
+    siteName: "Expandcast",
+    title: "Expandcast — Expand Your Content. Multiply Your Reach.",
     description:
-      "Upload one podcast episode. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.",
+      "Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Castmill — Turn Audio Into Culture",
+        alt: "Expandcast — Expand Your Content. Multiply Your Reach.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Castmill — Turn Audio Into Culture",
+    title: "Expandcast — Expand Your Content. Multiply Your Reach.",
     description:
-      "Upload one podcast episode. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.",
+      "Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.",
     images: ["/opengraph-image"],
-    creator: "@castmill",
+    creator: "@expandcast",
   },
   robots: {
     index: true,

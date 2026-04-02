@@ -123,8 +123,8 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-5 mix-blend-difference text-white">
         <div className="flex items-center gap-2">
-          <Mic className="w-8 h-8 text-primary" />
-          <span className="font-heading font-bold text-2xl tracking-tighter">Castmill</span>
+          <Zap className="w-8 h-8 text-primary" />
+          <span className="font-heading font-bold text-2xl tracking-tighter">Expandcast</span>
         </div>
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild className="font-medium hover:text-primary transition-colors text-white hover:bg-white/10">
@@ -144,17 +144,17 @@ export default function LandingPage() {
         <div className="flex flex-col items-center max-w-5xl px-6 text-center">
           <div className="hero-badge mb-8 flex items-center gap-2 bg-secondary border border-border/50 px-4 py-1.5 rounded-none backdrop-blur-sm shadow-[4px_4px_0_0_var(--color-primary)]">
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold tracking-widest uppercase font-mono">The AI podcast multiplier is live</span>
+            <span className="text-sm font-bold tracking-widest uppercase font-mono">The AI content multiplier is live</span>
           </div>
 
           <h1 className="font-heading font-extrabold tracking-tighter leading-[0.85] mb-8 text-foreground uppercase perspective-1000"
             style={{ fontSize: "clamp(2.8rem, 12vw, 9rem)" }}>
-            <div className="overflow-hidden pb-2"><div className="hero-title-line">TURN AUDIO</div></div>
-            <div className="overflow-hidden pb-2"><div className="hero-title-line">INTO <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-chart-4">CULTURE.</span></div></div>
+            <div className="overflow-hidden pb-2"><div className="hero-title-line">EXPAND YOUR</div></div>
+            <div className="overflow-hidden pb-2"><div className="hero-title-line"><span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-chart-4">CONTENT.</span></div></div>
           </h1>
 
           <p className="hero-desc text-base md:text-2xl text-muted-foreground max-w-3xl mb-12 leading-relaxed font-mono">
-            Upload one podcast episode. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.
+            Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.
           </p>
 
           <div className="hero-buttons flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
@@ -204,7 +204,7 @@ export default function LandingPage() {
                <h3 className="text-5xl md:text-7xl font-heading font-black uppercase tracking-tighter leading-none mb-6">Upload &<br/>Transcribe</h3>
              </div>
              <AudioLines className="w-24 h-24 md:w-32 md:h-32 text-primary opacity-50" />
-             <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Drop your raw MP3/WAV file. We transcribe it with superhuman accuracy, recognizing speakers and context automatically.</p>
+             <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Drop any MP3, WAV, or video file. We transcribe it with superhuman accuracy, recognizing speakers and context automatically.</p>
           </div>
           
           <div className="w-[85vw] md:w-[60vw] lg:w-[40vw] h-[60vh] bg-background border-4 border-chart-4 p-8 md:p-12 flex flex-col justify-between shrink-0 shadow-[16px_16px_0_0_var(--color-chart-4)]">
@@ -213,7 +213,7 @@ export default function LandingPage() {
                <h3 className="text-5xl md:text-7xl font-heading font-black uppercase tracking-tighter leading-none mb-6">AI Context<br/>Analysis</h3>
              </div>
              <Zap className="w-24 h-24 md:w-32 md:h-32 text-chart-4 opacity-50" />
-             <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Our engine extracts the juiciest hooks, controversial takes, and high-value insights hidden in your hour-long episode.</p>
+             <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Our engine extracts the juiciest hooks, controversial takes, and high-value insights from your content.</p>
           </div>
           
           <div className="w-[85vw] md:w-[60vw] lg:w-[40vw] h-[60vh] bg-background border-4 border-foreground p-8 md:p-12 flex flex-col justify-between shrink-0 shadow-[16px_16px_0_0_var(--color-foreground)]">
@@ -222,7 +222,7 @@ export default function LandingPage() {
                <h3 className="text-5xl md:text-7xl font-heading font-black uppercase tracking-tighter leading-none mb-6">Content<br/>Multiplication</h3>
              </div>
              <Share2 className="w-24 h-24 md:w-32 md:h-32 text-foreground opacity-50" />
-             <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Instantly get ready-to-publish viral clips, SEO-optimized blog posts, show notes, and captivating newsletters.</p>
+             <p className="text-xl md:text-2xl font-mono text-muted-foreground mt-8">Instantly get ready-to-publish viral clips, SEO-optimized blog posts, newsletters, and social threads.</p>
           </div>
 
           <div className="w-[20vw] flex items-center justify-center shrink-0">
@@ -237,9 +237,9 @@ export default function LandingPage() {
           style={{ fontSize: "clamp(2rem, 10vw, 5rem)" }}>The Pipeline</h2>
         <div className="flex flex-col gap-8">
           {[
-            { step: "01", title: "Upload &\nTranscribe", icon: AudioLines, color: "border-primary text-primary", shadow: "shadow-[8px_8px_0_0_var(--color-primary)]", desc: "Drop your raw MP3/WAV file. We transcribe it with superhuman accuracy." },
+            { step: "01", title: "Upload &\nTranscribe", icon: AudioLines, color: "border-primary text-primary", shadow: "shadow-[8px_8px_0_0_var(--color-primary)]", desc: "Drop any MP3, WAV, or video file. Transcribed with superhuman accuracy." },
             { step: "02", title: "AI Context\nAnalysis", icon: Zap, color: "border-chart-4 text-chart-4", shadow: "shadow-[8px_8px_0_0_var(--color-chart-4)]", desc: "Extracts the juiciest hooks, controversial takes, and high-value insights." },
-            { step: "03", title: "Content\nMultiplication", icon: Share2, color: "border-foreground text-foreground", shadow: "shadow-[8px_8px_0_0_var(--color-foreground)]", desc: "Instantly get blogs, show notes, newsletters, and social threads." },
+            { step: "03", title: "Content\nMultiplication", icon: Share2, color: "border-foreground text-foreground", shadow: "shadow-[8px_8px_0_0_var(--color-foreground)]", desc: "Instantly get blogs, newsletters, viral clips, and social threads." },
           ].map(({ step, title, icon: Icon, color, shadow, desc }) => (
             <div key={step} className={`border-4 ${color} ${shadow} bg-background p-7 flex flex-col gap-4`}>
               <span className="font-mono font-bold text-base">STEP {step}</span>
@@ -254,19 +254,19 @@ export default function LandingPage() {
 
       {/* Features Grid */}
       <section className="relative z-10 w-full max-w-screen-2xl mx-auto px-6 py-20 md:py-32 overflow-hidden">
-        <div className="mb-20 text-center md:text-left">
+          <div className="mb-20 text-center md:text-left">
           <h2 className="font-heading font-black uppercase tracking-tighter leading-none mb-6 break-words"
             style={{ fontSize: "clamp(1.6rem, 7vw, 5rem)" }}>Everything you need<br/><span className="text-primary">to dominate algorithms.</span></h2>
-          <p className="text-2xl font-mono text-muted-foreground max-w-2xl">Stop doing manual labor. Let AI handle the distribution while you focus on recording.</p>
+          <p className="text-2xl font-mono text-muted-foreground max-w-2xl">Stop doing manual labor. Let AI handle the distribution while you focus on creating.</p>
         </div>
 
         <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[
             { icon: FileText, title: "SEO Blogs", desc: "Long-form articles that rank on Google, drafted in your exact tone of voice.", color: "text-primary", border: "border-primary" },
-            { icon: LayoutTemplate, title: "Show Notes", desc: "Perfectly formatted timestamps, summaries, and key takeaways for Spotify & Apple.", color: "text-chart-2", border: "border-chart-2" },
-            { icon: MessageSquare, title: "Social Threads", desc: "Twitter/X and LinkedIn threads optimized for maximum engagement and reach.", color: "text-chart-4", border: "border-chart-4" },
-            { icon: Mic, title: "Voice Matching", desc: "We train on your past content to write exactly how you speak.", color: "text-chart-5", border: "border-chart-5" },
-            { icon: Share2, title: "Auto-Publish", desc: "Send your generated content directly to your CMS, newsletter provider, or social tools.", color: "text-primary", border: "border-primary" },
+            { icon: MessageSquare, title: "Social Threads", desc: "Twitter/X and LinkedIn threads optimized for maximum engagement and reach.", color: "text-chart-2", border: "border-chart-2" },
+            { icon: LayoutTemplate, title: "Newsletters", desc: "Beautifully formatted email newsletters ready to send to your audience.", color: "text-chart-4", border: "border-chart-4" },
+            { icon: Mic, title: "Voice Matching", desc: "We train on your past content to write exactly how you speak and create.", color: "text-chart-5", border: "border-chart-5" },
+            { icon: Share2, title: "Channel Optimizer", desc: "Analyze your YouTube channel, find viral moments, and repurpose every video.", color: "text-primary", border: "border-primary" },
             { icon: Zap, title: "Viral Hooks", desc: "AI identifies the most controversial and engaging moments to use as promo material.", color: "text-chart-2", border: "border-chart-2" }
           ].map((feature, i) => (
             <div key={i} className={`feature-card p-10 border-4 ${feature.border} bg-card hover:-translate-y-2 hover:-translate-x-2 transition-transform duration-300 shadow-[8px_8px_0_0_currentColor] group`} style={{ color: "var(--color-border)" }}>
@@ -305,11 +305,11 @@ export default function LandingPage() {
       <footer className="w-full bg-zinc-950 border-t border-zinc-900 py-12 px-6 relative z-10">
         <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 text-white">
-            <Mic className="w-6 h-6 text-primary" />
-            <span className="font-heading font-bold text-xl tracking-tighter">Castmill</span>
+            <Zap className="w-6 h-6 text-primary" />
+            <span className="font-heading font-bold text-xl tracking-tighter">Expandcast</span>
           </div>
           <div className="text-zinc-500 font-mono text-sm uppercase">
-            © {new Date().getFullYear()} Castmill Inc. All rights reserved.
+            © {new Date().getFullYear()} Expandcast Inc. All rights reserved.
           </div>
           <div className="flex gap-6 text-zinc-500 font-mono text-sm uppercase">
             <Link href="#" className="hover:text-primary transition-colors">Twitter</Link>

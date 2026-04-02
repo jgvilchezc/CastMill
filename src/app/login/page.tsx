@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Mic, ArrowRight, AlertCircle } from "lucide-react";
+import { Zap, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { login } from "@/app/actions/auth";
@@ -18,8 +18,8 @@ export default function LoginPage() {
         <div className="absolute -top-1/4 -left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[128px] z-0 mix-blend-screen"></div>
 
         <div className="relative z-10 flex items-center gap-2">
-          <Mic className="w-8 h-8 text-primary" />
-          <span className="font-heading font-bold text-2xl tracking-tighter text-white">Castmill</span>
+          <Zap className="w-8 h-8 text-primary" />
+          <span className="font-heading font-bold text-2xl tracking-tighter text-white">Expandcast</span>
         </div>
 
         <div className="relative z-10 max-w-lg">
@@ -27,20 +27,20 @@ export default function LoginPage() {
             WELCOME BACK TO THE <span className="text-primary">STUDIO.</span>
           </h2>
           <p className="text-zinc-400 text-lg">
-            Pick up where you left off. Transform your latest audio into a multi-channel content engine.
+            Pick up where you left off. Expand your content into a multi-channel distribution engine.
           </p>
         </div>
 
         <div className="relative z-10 text-sm text-zinc-500 font-mono">
-          © {new Date().getFullYear()} CASTMILL INC.
+          © {new Date().getFullYear()} EXPANDCAST INC.
         </div>
       </div>
 
       {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background relative">
         <div className="absolute top-8 left-8 flex lg:hidden items-center gap-2">
-          <Mic className="w-8 h-8 text-primary" />
-          <span className="font-heading font-bold text-2xl tracking-tighter">Castmill</span>
+          <Zap className="w-8 h-8 text-primary" />
+          <span className="font-heading font-bold text-2xl tracking-tighter">Expandcast</span>
         </div>
 
         <div className="w-full max-w-md flex flex-col gap-8">

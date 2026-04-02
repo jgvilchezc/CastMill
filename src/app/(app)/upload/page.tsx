@@ -88,7 +88,7 @@ export default function UploadPage() {
       <div className="mb-8">
         <h2 className="text-2xl font-bold tracking-tight">Upload Episode</h2>
         <p className="text-muted-foreground text-sm mt-1">
-          Upload a recording or script — Castmill will transcribe and generate content assets automatically.
+          Upload a recording or script — Expandcast will transcribe and generate content assets automatically.
         </p>
       </div>
 

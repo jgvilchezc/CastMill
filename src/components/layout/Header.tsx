@@ -19,7 +19,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
 
   const title =
     pageTitles[pathname] ??
-    (pathname.startsWith("/episode/") ? "Episode Detail" : "Castmill")
+    (pathname.startsWith("/episode/") ? "Episode Detail" : "Expandcast")
 
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-background px-4">

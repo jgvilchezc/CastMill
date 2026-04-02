@@ -95,8 +95,8 @@ Provide a comprehensive channel analysis in this EXACT JSON format (no markdown,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": "https://castmill.com",
-      "X-Title": "Castmill",
+      "HTTP-Referer": "https://expandcast.com",
+      "X-Title": "Expandcast",
     },
     body: JSON.stringify({
       model: "meta-llama/llama-3.3-70b-instruct:free",
