@@ -38,7 +38,7 @@ function getProgressMessage(progress: number, phase: Phase): string {
 
 export default function UploadPage() {
   const router = useRouter();
-  const { addEpisode, updateTranscript } = useEpisodes();
+  const { addEpisode, updateTranscript, deleteEpisode } = useEpisodes();
   const { canUpload, episodesUsed, episodesLimit, consumeEpisodeCredit, user } = useUser();
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
@@ -105,9 +105,6 @@ export default function UploadPage() {
       return;
     }
 
-    const credited = await consumeEpisodeCredit();
-    if (!credited) return;
-
     setFileName(file.name);
 
     let audioFile = file;
@@ -142,6 +139,7 @@ export default function UploadPage() {
 
     const supabase = createClient();
     const storagePath = `${user!.id}/${Date.now()}-${audioFile.name}`;
+    let episodeId: string | null = null;
 
     try {
       const title = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
@@ -154,6 +152,7 @@ export default function UploadPage() {
         status: "processing",
         thumbnailUrl: null,
       });
+      episodeId = episode.id;
 
       setProgress(10);
 
@@ -193,12 +192,20 @@ export default function UploadPage() {
 
       await updateTranscript(episode.id, transcriptText, segments);
 
+      const credited = await consumeEpisodeCredit();
+      if (!credited) {
+        console.warn("Episode created but credit not consumed — limit may have been reached concurrently");
+      }
+
       setProgress(100);
       setNewEpisodeId(episode.id);
       setPhase("done");
     } catch (err: unknown) {
       console.error(err);
       supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      if (episodeId) {
+        try { await deleteEpisode(episodeId); } catch { /* best-effort cleanup */ }
+      }
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong.");
       setPhase("error");
     }

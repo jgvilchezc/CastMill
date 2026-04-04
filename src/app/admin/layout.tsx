@@ -10,8 +10,12 @@ export default async function AdminLayout({
 }) {
   try {
     await requireAdmin();
-  } catch {
-    redirect("/");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown";
+    if (msg === "Unauthorized" || msg === "ADMIN_EMAIL not configured") {
+      redirect("/");
+    }
+    throw err;
   }
 
   return (

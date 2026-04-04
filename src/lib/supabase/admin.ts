@@ -29,9 +29,12 @@ export async function requireAdmin(): Promise<{ email: string; id: string }> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || user.email !== adminEmail) {
+  const normalizedAdmin = adminEmail.toLowerCase().trim();
+  const normalizedUser = user?.email?.toLowerCase().trim() ?? "";
+
+  if (!user || normalizedUser !== normalizedAdmin) {
     throw new Error("Unauthorized");
   }
 
-  return { email: user.email, id: user.id };
+  return { email: user.email!, id: user.id };
 }
