@@ -141,7 +141,7 @@ Return ONLY valid JSON with no markdown:
   for (let attempt = 0; attempt < modelSets.length; attempt++) {
     const models = modelSets[attempt];
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000);
+    const timeout = setTimeout(() => controller.abort(), 25000);
 
     try {
       const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
