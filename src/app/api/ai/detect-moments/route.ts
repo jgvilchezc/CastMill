@@ -32,12 +32,17 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: episode } = await supabase
+  const { data: episode, error: episodeError } = await supabase
     .from("episodes")
     .select("id, viral_moments")
     .eq("id", episodeId)
     .eq("user_id", user.id)
     .single();
+
+  if (episodeError) {
+    console.error("detect-moments episode query error:", episodeError.message);
+    return NextResponse.json({ error: episodeError.message }, { status: 500 });
+  }
 
   if (!episode) {
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });
