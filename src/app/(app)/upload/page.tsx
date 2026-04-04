@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useEpisodes } from "@/lib/context/episode-context";
 import { useUser } from "@/lib/context/user-context";
+import { createClient } from "@/lib/supabase/client";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
 
@@ -17,6 +18,7 @@ type Phase = "idle" | "extracting" | "uploading" | "done" | "error";
 
 const VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm", "video/mpeg"]);
 const GROQ_LIMIT_BYTES = 25 * 1024 * 1024;
+const STORAGE_BUCKET = "episode-audio";
 
 function isVideoFile(file: File) {
   return VIDEO_TYPES.has(file.type) || /\.(mp4|mov|avi|mkv|webm|mpeg|mpg)$/i.test(file.name);
@@ -126,8 +128,20 @@ export default function UploadPage() {
       }
     }
 
+    if (audioFile.size > GROQ_LIMIT_BYTES) {
+      setErrorMsg(
+        `Audio file is ${(audioFile.size / 1024 / 1024).toFixed(1)} MB but Groq Whisper accepts up to 25 MB. ` +
+        `Try exporting as MP3 at a lower bitrate (mono, 64 kbps).`
+      );
+      setPhase("error");
+      return;
+    }
+
     setPhase("uploading");
     setProgress(0);
+
+    const supabase = createClient();
+    const storagePath = `${user!.id}/${Date.now()}-${audioFile.name}`;
 
     try {
       const title = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
@@ -141,19 +155,32 @@ export default function UploadPage() {
         thumbnailUrl: null,
       });
 
-      setProgress(15);
+      setProgress(10);
 
-      const formData = new FormData();
-      formData.append("file", audioFile);
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, audioFile);
 
-      setProgress(30);
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      setProgress(40);
 
       const res = await fetch("/api/ai/transcribe", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storagePath }),
       });
 
       setProgress(80);
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          `Server returned an unexpected response (${res.status}). Please try again.`
+        );
+      }
 
       const data = await res.json();
 
@@ -171,6 +198,7 @@ export default function UploadPage() {
       setPhase("done");
     } catch (err: unknown) {
       console.error(err);
+      supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong.");
       setPhase("error");
     }

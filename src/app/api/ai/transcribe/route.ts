@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import Groq from "groq-sdk";
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+const STORAGE_BUCKET = "episode-audio";
 
 const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
   : null;
 
 export async function POST(req: Request) {
+  let storagePath: string | undefined;
+
   try {
     // Verify Supabase session
     const supabase = await createClient();
@@ -15,11 +20,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
+    const body = await req.json();
+    storagePath = body.storagePath;
 
-    if (!file) {
-      return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
+    if (!storagePath || typeof storagePath !== "string") {
+      return NextResponse.json({ error: "Missing storagePath" }, { status: 400 });
+    }
+
+    if (!storagePath.startsWith(`${user.id}/`)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (process.env.USE_REAL_AI !== 'true' || !groq) {
@@ -28,19 +37,27 @@ export async function POST(req: Request) {
       }, { status: 501 });
     }
 
-    // Convert Web File to a format Groq SDK can use (Node.js File/Blob)
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    // Create a new File object that Groq SDK accepts
-    const groqFile = new File([buffer], file.name, { type: file.type });
+    const admin = createAdminClient();
+    const { data: fileData, error: downloadError } = await admin.storage
+      .from(STORAGE_BUCKET)
+      .download(storagePath);
+
+    if (downloadError || !fileData) {
+      return NextResponse.json(
+        { error: `Could not download audio: ${downloadError?.message ?? "file not found"}` },
+        { status: 404 }
+      );
+    }
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const fileName = storagePath.split("/").pop() ?? "audio.mp3";
+    const groqFile = new File([buffer], fileName, { type: "audio/mpeg" });
 
     // Call Groq Whisper API
     const transcription = await groq.audio.transcriptions.create({
       file: groqFile,
       model: "whisper-large-v3-turbo",
-      response_format: "verbose_json", // verbose_json gives us timestamps and segments
-      // No language set = Whisper auto-detects (supports Spanish, English, and 90+ more)
+      response_format: "verbose_json",
     });
 
     type GroqSegment = { text: string; start: number; end: number };
@@ -51,6 +68,8 @@ export async function POST(req: Request) {
       endTime: s.end,
     })) ?? [];
 
+    admin.storage.from(STORAGE_BUCKET).remove([storagePath]);
+
     return NextResponse.json({
       text: transcription.text,
       segments,
@@ -60,6 +79,13 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to transcribe audio";
     console.error("Transcription Error:", msg);
+
+    if (storagePath) {
+      try {
+        const admin = createAdminClient();
+        admin.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      } catch { /* best-effort cleanup */ }
+    }
 
     if (msg.includes("413") || msg.toLowerCase().includes("too large") || msg.toLowerCase().includes("maximum content size")) {
       return NextResponse.json(
