@@ -5,6 +5,12 @@ import { Clock, Wand2, Scissors, Zap, Flame, Target, TrendingUp } from "lucide-r
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+export interface HookVariant {
+  style: "curiosity" | "controversy" | "actionable"
+  text: string
+  caption: string
+}
+
 export interface ViralMoment {
   id: string
   quote: string
@@ -14,6 +20,7 @@ export interface ViralMoment {
   reason: string
   category: "counter-intuitive" | "actionable" | "emotional" | "controversial" | "story"
   suggestedHook: string
+  hooks?: HookVariant[] | null
 }
 
 interface MomentCardProps {
@@ -99,6 +106,9 @@ export function MomentCard({ moment, index, onHookLab, onCut }: MomentCardProps)
             >
               <Wand2 className="h-3.5 w-3.5 mr-1.5" />
               Hook Lab
+              {moment.hooks && moment.hooks.length > 0 && (
+                <span className="ml-1 text-[10px] text-primary font-mono">{moment.hooks.length}</span>
+              )}
             </Button>
             <Button
               size="sm"

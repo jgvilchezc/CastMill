@@ -90,33 +90,52 @@ Return ONLY valid JSON with no markdown:
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 55000);
 
-  const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    signal: controller.signal,
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": "https://expandcast.com",
-      "X-Title": "Expandcast",
-    },
-    body: JSON.stringify({
-      model: "meta-llama/llama-3.3-70b-instruct:free",
-      models: [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "qwen/qwen3.6-plus-preview:free",
-        "nvidia/nemotron-3-nano-30b-a3b:free",
-      ],
-      route: "fallback",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-      max_tokens: 4000,
-    }),
-  });
+  let orRes: Response;
+  try {
+    orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      signal: controller.signal,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://expandcast.com",
+        "X-Title": "Expandcast",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct:free",
+        models: [
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "qwen/qwen3.6-plus-preview:free",
+          "nvidia/nemotron-3-nano-30b-a3b:free",
+        ],
+        route: "fallback",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.4,
+        max_tokens: 4000,
+      }),
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    const msg = err instanceof Error && err.name === "AbortError"
+      ? "Moment detection timed out — please try again"
+      : "Could not reach AI service — check your connection";
+    console.error("detect-moments fetch error:", err);
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
 
   clearTimeout(timeout);
 
   if (!orRes.ok) {
-    return NextResponse.json({ error: "AI detection failed" }, { status: 502 });
+    let detail = `OpenRouter ${orRes.status}`;
+    try {
+      const body = await orRes.json();
+      detail = body?.error?.message ?? body?.error ?? detail;
+    } catch { /* ignore */ }
+    console.error("detect-moments OpenRouter error:", detail);
+    return NextResponse.json(
+      { error: `AI detection failed: ${detail}` },
+      { status: 502 }
+    );
   }
 
   const orData = await orRes.json();
@@ -138,10 +157,18 @@ Return ONLY valid JSON with no markdown:
     );
   }
 
-  await supabase
+  const { error: saveError } = await supabase
     .from("episodes")
     .update({ viral_moments: moments })
     .eq("id", episodeId);
+
+  if (saveError) {
+    console.error("detect-moments: failed to persist viral_moments:", saveError.message);
+    return NextResponse.json(
+      { error: "Moments detected but failed to save — please try again" },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ moments });
 }

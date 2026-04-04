@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
 
 export const maxDuration = 30;
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { quote, category, episodeTitle, topics } = await req.json();
+  const { quote, category, episodeTitle, topics, episodeId, momentId } = await req.json();
   if (!quote) {
     return NextResponse.json({ error: "quote is required" }, { status: 400 });
   }
@@ -59,33 +60,49 @@ Return ONLY valid JSON with no markdown:
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
-  const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    signal: controller.signal,
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": "https://expandcast.com",
-      "X-Title": "Expandcast",
-    },
-    body: JSON.stringify({
-      model: "meta-llama/llama-3.3-70b-instruct:free",
-      models: [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "qwen/qwen3.6-plus-preview:free",
-      ],
-      route: "fallback",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 1500,
-    }),
-  });
+  let orRes: Response;
+  try {
+    orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      signal: controller.signal,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://expandcast.com",
+        "X-Title": "Expandcast",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct:free",
+        models: [
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "qwen/qwen3.6-plus-preview:free",
+        ],
+        route: "fallback",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    const msg = err instanceof Error && err.name === "AbortError"
+      ? "Hook generation timed out — please try again"
+      : "Could not reach AI service — check your connection";
+    console.error("generate-hooks fetch error:", err);
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
 
   clearTimeout(timeout);
 
   if (!orRes.ok) {
+    let detail = `OpenRouter ${orRes.status}`;
+    try {
+      const body = await orRes.json();
+      detail = body?.error?.message ?? body?.error ?? detail;
+    } catch { /* ignore */ }
+    console.error("generate-hooks OpenRouter error:", detail);
     return NextResponse.json(
-      { error: "Hook generation failed" },
+      { error: `Hook generation failed: ${detail}` },
       { status: 502 }
     );
   }
@@ -103,10 +120,34 @@ Return ONLY valid JSON with no markdown:
     const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : stripped);
     hooks = parsed.hooks;
   } catch {
+    console.error("generate-hooks parse error, raw text:", text.slice(0, 500));
     return NextResponse.json(
-      { error: "Failed to parse AI response" },
+      { error: "Failed to parse AI response — please try again" },
       { status: 500 }
     );
+  }
+
+  if (episodeId && momentId) {
+    const { data: ep } = await supabase
+      .from("episodes")
+      .select("viral_moments")
+      .eq("id", episodeId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (ep?.viral_moments && Array.isArray(ep.viral_moments)) {
+      const updated = (ep.viral_moments as { id?: string; [key: string]: unknown }[]).map((m) =>
+        m.id === momentId ? { ...m, hooks } : m
+      );
+      const { error: updateErr } = await supabase
+        .from("episodes")
+        .update({ viral_moments: updated as unknown as Database["public"]["Tables"]["episodes"]["Update"]["viral_moments"] })
+        .eq("id", episodeId);
+
+      if (updateErr) {
+        console.error("generate-hooks: failed to persist hooks:", updateErr.message);
+      }
+    }
   }
 
   return NextResponse.json({ hooks });

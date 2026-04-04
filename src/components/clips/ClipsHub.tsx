@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/lib/context/user-context"
 import { PLANS } from "@/lib/plans"
-import { MomentCard, type ViralMoment } from "@/components/clips/MomentCard"
+import { MomentCard, type ViralMoment, type HookVariant } from "@/components/clips/MomentCard"
 import { HookLab } from "@/components/clips/HookLab"
 import { EpisodeClipGenerator } from "@/components/clips/EpisodeClipGenerator"
 import { TrendBanner } from "@/components/clips/TrendBanner"
@@ -22,6 +22,10 @@ interface ClipsHubProps {
 interface SelectedHook {
   text: string
   caption: string
+}
+
+function updateMomentHooks(moments: ViralMoment[], momentId: string, hooks: HookVariant[]): ViralMoment[] {
+  return moments.map(m => m.id === momentId ? { ...m, hooks } : m)
 }
 
 export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cachedMoments }: ClipsHubProps) {
@@ -171,8 +175,14 @@ export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cach
           category={hookLabMoment.category}
           episodeTitle={episodeTitle}
           topics={topics}
+          episodeId={episodeId}
+          momentId={hookLabMoment.id}
+          cachedHooks={hookLabMoment.hooks}
           onClose={() => setHookLabMoment(null)}
           onSelectHook={(hook) => handleSelectHook({ text: hook.text, caption: hook.caption })}
+          onHooksGenerated={(mid, hooks) => {
+            setMoments(prev => prev ? updateMomentHooks(prev, mid, hooks) : prev)
+          }}
         />
       )}
 

@@ -5,20 +5,19 @@ import { X, Loader2, Wand2, Copy, Check, Zap, Flame, Target } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-
-interface Hook {
-  style: "curiosity" | "controversy" | "actionable"
-  text: string
-  caption: string
-}
+import type { HookVariant } from "@/components/clips/MomentCard"
 
 interface HookLabProps {
   quote: string
   category: string
   episodeTitle: string
   topics: string[]
+  episodeId: string
+  momentId: string
+  cachedHooks?: HookVariant[] | null
   onClose: () => void
-  onSelectHook?: (hook: Hook) => void
+  onSelectHook?: (hook: HookVariant) => void
+  onHooksGenerated?: (momentId: string, hooks: HookVariant[]) => void
 }
 
 const STYLE_META = {
@@ -27,8 +26,8 @@ const STYLE_META = {
   actionable: { icon: Target, label: "Actionable", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
 }
 
-export function HookLab({ quote, category, episodeTitle, topics, onClose, onSelectHook }: HookLabProps) {
-  const [hooks, setHooks] = useState<Hook[] | null>(null)
+export function HookLab({ quote, category, episodeTitle, topics, episodeId, momentId, cachedHooks, onClose, onSelectHook, onHooksGenerated }: HookLabProps) {
+  const [hooks, setHooks] = useState<HookVariant[] | null>(cachedHooks ?? null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
@@ -40,11 +39,12 @@ export function HookLab({ quote, category, episodeTitle, topics, onClose, onSele
       const res = await fetch("/api/ai/generate-hooks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote, category, episodeTitle, topics }),
+        body: JSON.stringify({ quote, category, episodeTitle, topics, episodeId, momentId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Generation failed")
       setHooks(data.hooks)
+      onHooksGenerated?.(momentId, data.hooks)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong")
     } finally {
