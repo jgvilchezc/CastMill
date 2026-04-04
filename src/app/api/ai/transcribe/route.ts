@@ -43,7 +43,8 @@ export async function POST(req: Request) {
       // No language set = Whisper auto-detects (supports Spanish, English, and 90+ more)
     });
 
-    const segments = (transcription as any).segments?.map((s: any) => ({
+    type GroqSegment = { text: string; start: number; end: number };
+    const segments = (transcription as { segments?: GroqSegment[] }).segments?.map((s) => ({
       speaker: "Speaker",
       text: s.text.trim(),
       startTime: s.start,
@@ -53,11 +54,20 @@ export async function POST(req: Request) {
     return NextResponse.json({
       text: transcription.text,
       segments,
-      language: (transcription as any).language ?? "unknown",
+      language: (transcription as { language?: string }).language ?? "unknown",
     });
 
-  } catch (error: any) {
-    console.error("Transcription Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to transcribe audio" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to transcribe audio";
+    console.error("Transcription Error:", msg);
+
+    if (msg.includes("413") || msg.toLowerCase().includes("too large") || msg.toLowerCase().includes("maximum content size")) {
+      return NextResponse.json(
+        { error: "File too large for Groq Whisper (max 25 MB). Export as MP3 audio-only and try again." },
+        { status: 413 }
+      );
+    }
+
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

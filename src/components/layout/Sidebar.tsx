@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Upload, Brain, Settings, Zap, LogOut, ChevronUp, Youtube } from "lucide-react"
+import { LayoutDashboard, Upload, Brain, Settings, LogOut, ChevronUp, Youtube, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/lib/context/user-context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +22,7 @@ const navItems = [
   { label: "New Episode", icon: Upload, href: "/upload" },
   { label: "Channel Optimizer", icon: Youtube, href: "/channel" },
   { label: "Memory", icon: Brain, href: "/memory", disabled: true },
-  { label: "Settings", icon: Settings, href: "/settings", disabled: true },
+  { label: "Settings", icon: Settings, href: "/settings" },
 ]
 
 const planColors: Record<string, string> = {
@@ -36,7 +37,10 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname()
-  const { user, logout, upgradePlan } = useUser()
+  const { user, logout, episodesUsed, episodesLimit } = useUser()
+
+  const usagePct = episodesLimit > 0 ? Math.round((episodesUsed / episodesLimit) * 100) : 0
+  const isNearLimit = usagePct >= 80
 
   return (
     <div className="flex h-full flex-col bg-card border-r border-border">
@@ -75,6 +79,31 @@ export function Sidebar({ onClose }: SidebarProps) {
         })}
       </nav>
 
+      {/* Episode usage meter */}
+      {user && (
+        <div className="px-4 pb-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Episodes this month</span>
+            <span className={cn("font-medium tabular-nums", isNearLimit && "text-amber-500")}>
+              {episodesUsed} / {episodesLimit}
+            </span>
+          </div>
+          <Progress
+            value={usagePct}
+            className={cn("h-1.5", isNearLimit && "[&>div]:bg-amber-500")}
+          />
+          {user.plan !== "pro" && (
+            <Link
+              href="/pricing"
+              className="flex items-center gap-1 mt-2 text-xs text-primary hover:underline"
+            >
+              <Sparkles className="h-3 w-3" />
+              Upgrade for more episodes
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* User section */}
       {user && (
         <div className="border-t border-border p-3">
@@ -88,25 +117,24 @@ export function Sidebar({ onClose }: SidebarProps) {
                   </Avatar>
                   <div className="flex flex-col items-start flex-1 min-w-0">
                     <span className="text-sm font-medium truncate">{user.name ?? user.email}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn("text-xs capitalize px-1.5 py-0.5 rounded font-medium", planColors[user.plan])}>
-                        {user.plan}
-                      </span>
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                        <Zap className="h-3 w-3" />
-                        {user.credits}
-                      </span>
-                    </div>
+                    <span className={cn("text-xs capitalize px-1.5 py-0.5 rounded font-medium", planColors[user.plan])}>
+                      {user.plan}
+                    </span>
                   </div>
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="w-48">
-              <DropdownMenuItem onClick={() => upgradePlan("pro")}>
-                Upgrade to Pro
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {user.plan !== "pro" && (
+                <DropdownMenuItem asChild>
+                  <Link href="/pricing" className="flex items-center gap-2 cursor-pointer">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Upgrade Plan
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {user.plan !== "pro" && <DropdownMenuSeparator />}
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut className="h-4 w-4 mr-2" />
                 Log out

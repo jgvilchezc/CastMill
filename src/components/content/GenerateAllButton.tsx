@@ -1,7 +1,6 @@
 "use client"
 
-import { Sparkles, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
 interface GenerateAllButtonProps {
   onGenerate: () => void
@@ -10,18 +9,25 @@ interface GenerateAllButtonProps {
 
 export function GenerateAllButton({ onGenerate, isGenerating }: GenerateAllButtonProps) {
   return (
-    <Button onClick={onGenerate} disabled={isGenerating} size="lg">
+    <button
+      onClick={onGenerate}
+      disabled={isGenerating}
+      className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded
+        bg-primary text-primary-foreground
+        hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed
+        transition-all duration-150"
+    >
       {isGenerating ? (
         <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Generating...
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Generating…
         </>
       ) : (
         <>
-          <Sparkles className="h-4 w-4 mr-2" />
-          Generate All
+          <span className="text-[10px] opacity-60">▶</span>
+          Generate all
         </>
       )}
-    </Button>
+    </button>
   )
 }

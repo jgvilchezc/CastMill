@@ -1,12 +1,25 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
-import { FileText, Clock, Users } from "lucide-react"
+import { FileText, Clock, Users, Trash2 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { type Episode } from "@/lib/context/episode-context"
+import { useEpisodes } from "@/lib/context/episode-context"
 import { EpisodeStatusBadge } from "./EpisodeStatusBadge"
 import { formatDuration } from "@/lib/utils"
 
@@ -28,6 +41,18 @@ interface EpisodeCardProps {
 }
 
 export function EpisodeCard({ episode }: EpisodeCardProps) {
+  const { deleteEpisode } = useEpisodes()
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteEpisode(episode.id)
+    } catch {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -76,9 +101,42 @@ export function EpisodeCard({ episode }: EpisodeCardProps) {
               </span>
             )}
           </div>
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/episode/${episode.id}`}>View</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="sr-only">Delete episode</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete episode?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete &ldquo;{episode.title}&rdquo; along with its transcript and all generated content. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/episode/${episode.id}`}>View</Link>
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </motion.div>

@@ -17,6 +17,10 @@ export type Database = {
           avatar_url: string | null;
           plan: "free" | "starter" | "pro";
           credits: number;
+          episodes_used_this_month: number;
+          billing_period_start: string;
+          lemon_squeezy_customer_id: string | null;
+          lemon_squeezy_subscription_id: string | null;
         };
         Insert: {
           id: string;
@@ -25,6 +29,10 @@ export type Database = {
           avatar_url?: string | null;
           plan?: "free" | "starter" | "pro";
           credits?: number;
+          episodes_used_this_month?: number;
+          billing_period_start?: string;
+          lemon_squeezy_customer_id?: string | null;
+          lemon_squeezy_subscription_id?: string | null;
         };
         Update: {
           id?: string;
@@ -33,6 +41,10 @@ export type Database = {
           avatar_url?: string | null;
           plan?: "free" | "starter" | "pro";
           credits?: number;
+          episodes_used_this_month?: number;
+          billing_period_start?: string;
+          lemon_squeezy_customer_id?: string | null;
+          lemon_squeezy_subscription_id?: string | null;
         };
         Relationships: [];
       };
@@ -79,6 +91,7 @@ export type Database = {
           status: "ready" | "processing" | "failed";
           generation_count: number;
           thumbnail_url: string | null;
+          viral_moments: Json | null;
         };
         Insert: {
           id?: string;
@@ -92,6 +105,7 @@ export type Database = {
           status?: "ready" | "processing" | "failed";
           generation_count?: number;
           thumbnail_url?: string | null;
+          viral_moments?: Json | null;
         };
         Update: {
           id?: string;
@@ -105,6 +119,7 @@ export type Database = {
           status?: "ready" | "processing" | "failed";
           generation_count?: number;
           thumbnail_url?: string | null;
+          viral_moments?: Json | null;
         };
         Relationships: [];
       };
@@ -141,7 +156,13 @@ export type Database = {
           episode_id: string;
           user_id: string;
           created_at: string;
-          format: "blog" | "tweet_thread" | "linkedin" | "newsletter" | "youtube_desc" | "thumbnail";
+          format:
+            | "blog"
+            | "tweet_thread"
+            | "linkedin"
+            | "newsletter"
+            | "youtube_desc"
+            | "thumbnail";
           content: string;
           status: "ready" | "generating";
         };
@@ -150,7 +171,13 @@ export type Database = {
           episode_id: string;
           user_id: string;
           created_at?: string;
-          format: "blog" | "tweet_thread" | "linkedin" | "newsletter" | "youtube_desc" | "thumbnail";
+          format:
+            | "blog"
+            | "tweet_thread"
+            | "linkedin"
+            | "newsletter"
+            | "youtube_desc"
+            | "thumbnail";
           content: string;
           status?: "ready" | "generating";
         };
@@ -159,7 +186,13 @@ export type Database = {
           episode_id?: string;
           user_id?: string;
           created_at?: string;
-          format?: "blog" | "tweet_thread" | "linkedin" | "newsletter" | "youtube_desc" | "thumbnail";
+          format?:
+            | "blog"
+            | "tweet_thread"
+            | "linkedin"
+            | "newsletter"
+            | "youtube_desc"
+            | "thumbnail";
           content?: string;
           status?: "ready" | "generating";
         };
@@ -181,6 +214,7 @@ export type Database = {
           access_type: "public" | "oauth";
           analysis: Json | null;
           analyzed_at: string | null;
+          inspiration: Json | null;
         };
         Insert: {
           id?: string;
@@ -197,6 +231,7 @@ export type Database = {
           access_type?: "public" | "oauth";
           analysis?: Json | null;
           analyzed_at?: string | null;
+          inspiration?: Json | null;
         };
         Update: {
           id?: string;
@@ -213,6 +248,7 @@ export type Database = {
           access_type?: "public" | "oauth";
           analysis?: Json | null;
           analyzed_at?: string | null;
+          inspiration?: Json | null;
         };
         Relationships: [];
       };
@@ -267,6 +303,69 @@ export type Database = {
           published_at?: string | null;
           transcript?: Json | null;
           viral_moments?: Json | null;
+        };
+        Relationships: [];
+      };
+      trend_digests: {
+        Row: {
+          id: string;
+          niche: string;
+          data: Json;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          niche: string;
+          data: Json;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          niche?: string;
+          data?: Json;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      connected_accounts: {
+        Row: {
+          id: string;
+          user_id: string;
+          platform: "tiktok" | "instagram";
+          access_token: string;
+          refresh_token: string | null;
+          expires_at: string | null;
+          platform_user_id: string | null;
+          platform_username: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          platform: "tiktok" | "instagram";
+          access_token: string;
+          refresh_token?: string | null;
+          expires_at?: string | null;
+          platform_user_id?: string | null;
+          platform_username?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          platform?: "tiktok" | "instagram";
+          access_token?: string;
+          refresh_token?: string | null;
+          expires_at?: string | null;
+          platform_user_id?: string | null;
+          platform_username?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

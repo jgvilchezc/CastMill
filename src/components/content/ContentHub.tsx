@@ -1,21 +1,46 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import {
-  FileText, Twitter, Linkedin, Mail, Youtube, ImageIcon, Loader2, CheckCircle2,
-} from "lucide-react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import Link from "next/link"
+import { Lock } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { ContentPanel } from "./ContentPanel"
 import { useEpisodes, type ContentFormat, type Generation } from "@/lib/context/episode-context"
+import { useUser } from "@/lib/context/user-context"
+import { loadParams, saveParams, type GenerationParams } from "@/lib/generation-params"
+import { cn } from "@/lib/utils"
 
-const TABS: { format: ContentFormat; label: string; icon: React.ElementType }[] = [
-  { format: "blog", label: "Blog", icon: FileText },
-  { format: "tweet_thread", label: "Tweets", icon: Twitter },
-  { format: "linkedin", label: "LinkedIn", icon: Linkedin },
-  { format: "newsletter", label: "Newsletter", icon: Mail },
-  { format: "youtube_desc", label: "YouTube", icon: Youtube },
-  { format: "thumbnail", label: "Thumbnail", icon: ImageIcon },
+const TABS: { format: ContentFormat; label: string; requiredPlan: string }[] = [
+  { format: "blog",         label: "Blog",        requiredPlan: "free"    },
+  { format: "tweet_thread", label: "Tweets",      requiredPlan: "free"    },
+  { format: "linkedin",     label: "LinkedIn",    requiredPlan: "free"    },
+  { format: "newsletter",   label: "Newsletter",  requiredPlan: "starter" },
+  { format: "youtube_desc", label: "YouTube",     requiredPlan: "starter" },
+  { format: "thumbnail",    label: "Thumbnail",   requiredPlan: "starter" },
 ]
+
+interface LockedFormatCardProps {
+  label: string
+  requiredPlan: string
+}
+
+function LockedFormatCard({ label, requiredPlan }: LockedFormatCardProps) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <Lock className="h-4 w-4 text-muted-foreground/40" />
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Available on{" "}
+          <span className="capitalize">{requiredPlan}</span> and above.
+        </p>
+      </div>
+      <Button asChild size="sm" variant="outline" className="text-xs h-7">
+        <Link href="/pricing">Upgrade</Link>
+      </Button>
+    </div>
+  )
+}
 
 interface ContentHubProps {
   episodeId: string
@@ -26,7 +51,15 @@ interface ContentHubProps {
 
 export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, onGenerateAllDone }: ContentHubProps) {
   const { generateContent } = useEpisodes()
+  const { canUseFormat } = useUser()
+  const [activeFormat, setActiveFormat] = useState<ContentFormat>("blog")
   const [pendingFormats, setPendingFormats] = useState<Set<ContentFormat>>(new Set())
+  const [params, setParams] = useState<GenerationParams>(loadParams)
+
+  function handleParamsChange(next: GenerationParams) {
+    setParams(next)
+    saveParams(next)
+  }
 
   const getState = (format: ContentFormat): Generation | "generating" | null => {
     if (pendingFormats.has(format)) return "generating"
@@ -34,9 +67,10 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
   }
 
   const generateSingle = useCallback(async (format: ContentFormat) => {
+    if (!canUseFormat(format)) return
     setPendingFormats(prev => new Set([...prev, format]))
     try {
-      await generateContent(episodeId, format)
+      await generateContent(episodeId, format, params)
     } finally {
       setPendingFormats(prev => {
         const next = new Set(prev)
@@ -44,18 +78,18 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
         return next
       })
     }
-  }, [episodeId, generateContent])
+  }, [episodeId, generateContent, canUseFormat, params])
 
   const handleGenerateAll = useCallback(async () => {
     const formats = TABS
-      .filter(t => !pendingFormats.has(t.format))
+      .filter(t => !pendingFormats.has(t.format) && canUseFormat(t.format))
       .map(t => t.format)
     if (formats.length === 0) return
 
     for (const format of formats) {
       setPendingFormats(prev => new Set([...prev, format]))
       try {
-        await generateContent(episodeId, format)
+        await generateContent(episodeId, format, params)
       } finally {
         setPendingFormats(prev => {
           const next = new Set(prev)
@@ -65,7 +99,7 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
       }
     }
     onGenerateAllDone?.()
-  }, [episodeId, generateContent, onGenerateAllDone, pendingFormats])
+  }, [episodeId, generateContent, onGenerateAllDone, pendingFormats, canUseFormat, params])
 
   useEffect(() => {
     if (triggerGenerateAll) {
@@ -75,34 +109,61 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
   }, [triggerGenerateAll])
 
   return (
-    <Tabs defaultValue="blog">
-      <TabsList className="flex flex-wrap h-auto gap-1 mb-4">
-        {TABS.map(({ format, label, icon: Icon }) => {
+    <div>
+      {/* Format tabs */}
+      <div className="flex items-center gap-0.5 border-b border-border mb-6 overflow-x-auto">
+        {TABS.map(({ format, label }) => {
           const state = getState(format)
+          const locked = !canUseFormat(format)
+          const isActive = activeFormat === format
+          const isDone = state && state !== "generating"
+          const isGenerating = state === "generating"
+
           return (
-            <TabsTrigger key={format} value={format} className="gap-1.5">
-              <Icon className="h-3.5 w-3.5" />
+            <button
+              key={format}
+              onClick={() => setActiveFormat(format)}
+              className={cn(
+                "relative flex items-center gap-1.5 px-3 pb-2.5 pt-0 text-sm whitespace-nowrap transition-colors shrink-0",
+                "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:transition-all after:duration-150",
+                isActive
+                  ? "text-foreground after:bg-primary"
+                  : "text-muted-foreground hover:text-foreground/70 after:bg-transparent"
+              )}
+            >
+              {locked ? (
+                <Lock className="h-2.5 w-2.5 text-muted-foreground/30" />
+              ) : isGenerating ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              ) : isDone ? (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
+              ) : (
+                <span className="h-1.5 w-1.5 rounded-full border border-muted-foreground/30" />
+              )}
               {label}
-              {state === "generating" && (
-                <Loader2 className="h-3 w-3 animate-spin ml-0.5" />
-              )}
-              {state && state !== "generating" && (
-                <CheckCircle2 className="h-3 w-3 text-primary ml-0.5" />
-              )}
-            </TabsTrigger>
+            </button>
           )
         })}
-      </TabsList>
+      </div>
 
-      {TABS.map(({ format }) => (
-        <TabsContent key={format} value={format}>
-          <ContentPanel
-            format={format}
-            generation={getState(format)}
-            onGenerate={() => generateSingle(format)}
-          />
-        </TabsContent>
+      {/* Active panel */}
+      {TABS.map(({ format, label, requiredPlan }) => (
+        activeFormat === format && (
+          <div key={format}>
+            {canUseFormat(format) ? (
+              <ContentPanel
+                format={format}
+                generation={getState(format)}
+                params={params}
+                onParamsChange={handleParamsChange}
+                onGenerate={() => generateSingle(format)}
+              />
+            ) : (
+              <LockedFormatCard label={label} requiredPlan={requiredPlan} />
+            )}
+          </div>
+        )
       ))}
-    </Tabs>
+    </div>
   )
 }

@@ -5,26 +5,29 @@ import { Copy, Check, Download, Loader2, ImageIcon, Sparkles, RefreshCw } from "
 import { AnimatePresence, motion } from "framer-motion"
 import MarkdownIt from "markdown-it"
 import { type Generation, type ContentFormat } from "@/lib/context/episode-context"
-import { Button } from "@/components/ui/button"
+import { GenerationSettingsBar } from "./GenerationSettingsBar"
+import type { GenerationParams } from "@/lib/generation-params"
 
 const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
 
 interface ContentPanelProps {
   format: ContentFormat
   generation: Generation | "generating" | null
+  params: GenerationParams
+  onParamsChange: (p: GenerationParams) => void
   onGenerate: () => void
 }
 
 const formatLabels: Record<ContentFormat, string> = {
-  blog: "Blog Post",
+  blog:         "Blog Post",
   tweet_thread: "Tweet Thread",
-  linkedin: "LinkedIn Post",
-  newsletter: "Newsletter",
+  linkedin:     "LinkedIn Post",
+  newsletter:   "Newsletter",
   youtube_desc: "YouTube Description",
-  thumbnail: "Thumbnail Concepts",
+  thumbnail:    "Thumbnail",
 }
 
-export function ContentPanel({ format, generation, onGenerate }: ContentPanelProps) {
+export function ContentPanel({ format, generation, params, onParamsChange, onGenerate }: ContentPanelProps) {
   const [copied, setCopied] = useState(false)
 
   function handleCopy(content: string) {
@@ -48,78 +51,98 @@ export function ContentPanel({ format, generation, onGenerate }: ContentPanelPro
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {generation === null && (
-        <motion.div
-          key="empty"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="flex flex-col items-center justify-center py-16 text-center gap-4"
-        >
-          <p className="text-muted-foreground text-sm">No {formatLabels[format]} generated yet</p>
-          <Button onClick={onGenerate}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Generate {formatLabels[format]}
-          </Button>
-          <p className="text-xs text-muted-foreground">~2 seconds</p>
-        </motion.div>
-      )}
+    <div>
+      <GenerationSettingsBar format={format} params={params} onChange={onParamsChange} />
 
-      {generation === "generating" && (
-        <motion.div
-          key="generating"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="space-y-3 py-4"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating...
+      <AnimatePresence mode="wait">
+        {generation === null && (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center justify-center py-20 gap-4 text-center"
+          >
+            <p className="text-sm text-muted-foreground">
+              No {formatLabels[format]} yet
+            </p>
+            <button
+              onClick={onGenerate}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-border rounded
+                hover:border-primary/50 hover:bg-primary/5 hover:text-foreground
+                text-muted-foreground transition-all duration-150"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Generate
+            </button>
+          </motion.div>
+        )}
+
+        {generation === "generating" && (
+          <motion.div
+            key="generating"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="py-8 space-y-3"
+          >
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-6">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Generating {formatLabels[format]}…</span>
+              <span className="ml-auto text-muted-foreground/40">~20–40s</span>
             </div>
-            <span className="text-xs text-muted-foreground">~20–40s on free tier</span>
-          </div>
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className="animate-pulse bg-muted rounded h-4"
-              style={{ width: `${70 + (i % 3) * 10}%` }}
-            />
-          ))}
-        </motion.div>
-      )}
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="animate-pulse bg-muted/50 rounded h-3"
+                style={{ width: `${55 + (i % 4) * 12}%`, animationDelay: `${i * 0.1}s` }}
+              />
+            ))}
+          </motion.div>
+        )}
 
-      {generation && generation !== "generating" && (
-        <motion.div
-          key="ready"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-4"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <Button variant="ghost" size="sm" onClick={onGenerate} className="text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              Regenerate
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleCopy(generation.content)}>
-                {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-                {copied ? "Copied!" : "Copy"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleDownload(generation.content)}>
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                Download
-              </Button>
+        {generation && generation !== "generating" && (
+          <motion.div
+            key="ready"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {/* Action bar */}
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <button
+                onClick={onGenerate}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Regenerate
+              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleCopy(generation.content)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
+                    hover:border-border hover:text-foreground transition-all"
+                >
+                  {copied
+                    ? <><Check className="h-3 w-3 text-primary" />Copied</>
+                    : <><Copy className="h-3 w-3" />Copy</>
+                  }
+                </button>
+                <button
+                  onClick={() => handleDownload(generation.content)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
+                    hover:border-border hover:text-foreground transition-all"
+                >
+                  <Download className="h-3 w-3" />
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
 
-          <MarkdownContent content={generation.content} />
-
-        </motion.div>
-      )}
-    </AnimatePresence>
+            <MarkdownContent content={generation.content} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -146,17 +169,21 @@ function ThumbnailPanel({ generation, onGenerate }: ThumbnailPanelProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="flex flex-col items-center justify-center py-16 gap-5 text-center"
+          className="flex flex-col items-center gap-6 py-12"
         >
-          <div className="w-full max-w-md aspect-video border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-3 rounded-lg">
-            <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">1280 × 720 · YouTube Thumbnail</p>
+          <div className="w-full max-w-md aspect-video border border-dashed border-border bg-muted/10 rounded-lg flex flex-col items-center justify-center gap-2">
+            <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
+            <p className="text-xs text-muted-foreground/40 font-mono">1280 × 720</p>
           </div>
-          <Button onClick={onGenerate} size="lg" className="gap-2">
-            <Sparkles className="h-4 w-4" />
+          <button
+            onClick={onGenerate}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-border rounded
+              hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
             Generate Thumbnail
-          </Button>
-          <p className="text-xs text-muted-foreground">Powered by FLUX.1-schnell · ~20–40s</p>
+          </button>
+          <p className="text-xs text-muted-foreground/40 font-mono">FLUX.1-schnell · ~30s</p>
         </motion.div>
       )}
 
@@ -166,14 +193,14 @@ function ThumbnailPanel({ generation, onGenerate }: ThumbnailPanelProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="flex flex-col items-center gap-5 py-8"
+          className="flex flex-col items-center gap-4 py-8"
         >
-          <div className="w-full max-w-xl aspect-video bg-muted/30 border border-border rounded-lg overflow-hidden relative">
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="text-sm text-muted-foreground font-mono">Rendering with FLUX.1-schnell…</span>
+          <div className="w-full max-w-xl aspect-video bg-muted/20 border border-border rounded-lg overflow-hidden relative">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-xs font-mono text-muted-foreground">Rendering…</span>
             </div>
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted overflow-hidden">
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-muted overflow-hidden">
               <motion.div
                 className="h-full bg-primary"
                 initial={{ width: "0%" }}
@@ -182,7 +209,7 @@ function ThumbnailPanel({ generation, onGenerate }: ThumbnailPanelProps) {
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">~20–40s on free tier · Do not close this tab</p>
+          <p className="text-xs font-mono text-muted-foreground/40">~30s · do not close this tab</p>
         </motion.div>
       )}
 
@@ -191,22 +218,25 @@ function ThumbnailPanel({ generation, onGenerate }: ThumbnailPanelProps) {
           key="thumb-ready"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-3"
         >
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={onGenerate} className="gap-1.5 text-muted-foreground">
-              <RefreshCw className="h-3.5 w-3.5" />
+            <button onClick={onGenerate} className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+              <RefreshCw className="h-3 w-3" />
               Regenerate
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleDownload(generation.content)} className="gap-1.5">
-              <Download className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => handleDownload(generation.content)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded hover:border-border hover:text-foreground transition-all"
+            >
+              <Download className="h-3 w-3" />
               Download PNG
-            </Button>
+            </button>
           </div>
-          <div className="w-full rounded-lg border border-border overflow-hidden bg-muted/10 relative">
+          <div className="rounded-lg border border-border overflow-hidden relative">
             {!imgLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/10">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
               </div>
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -217,8 +247,8 @@ function ThumbnailPanel({ generation, onGenerate }: ThumbnailPanelProps) {
               onLoad={() => setImgLoaded(true)}
             />
           </div>
-          <p className="text-xs text-muted-foreground text-center">
-            1280 × 720 · FLUX.1-schnell via Hugging Face
+          <p className="text-[10px] font-mono text-muted-foreground/30 text-center">
+            1280 × 720 · FLUX.1-schnell
           </p>
         </motion.div>
       )}
@@ -231,16 +261,16 @@ function MarkdownContent({ content }: { content: string }) {
 
   return (
     <div
-      className="prose prose-sm prose-invert max-w-none rounded-lg border border-border bg-muted/30 p-5
-        prose-headings:font-heading prose-headings:tracking-tight prose-headings:text-foreground
-        prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-        prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/90
+      className="prose prose-sm dark:prose-invert max-w-none
+        prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-foreground
+        prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-h3:uppercase prose-h3:tracking-widest prose-h3:font-mono
+        prose-p:text-sm prose-p:leading-[1.75] prose-p:text-foreground/80
         prose-strong:text-foreground prose-strong:font-semibold
-        prose-em:text-foreground/80
-        prose-ul:text-sm prose-ol:text-sm prose-li:text-foreground/90
-        prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
-        prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:rounded
-        prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
+        prose-ul:text-sm prose-ol:text-sm prose-li:text-foreground/80 prose-li:leading-relaxed
+        prose-blockquote:border-l-2 prose-blockquote:border-primary/50 prose-blockquote:pl-4 prose-blockquote:text-muted-foreground prose-blockquote:not-italic
+        prose-code:text-[11px] prose-code:font-mono prose-code:text-primary/80 prose-code:bg-primary/5 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+        prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+        prose-hr:border-border/40"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

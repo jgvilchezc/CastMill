@@ -54,7 +54,7 @@ export function DropZone({ onFile }: DropZoneProps) {
       <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}>
         Choose file
       </Button>
-      <p className="text-xs text-muted-foreground mt-4">.mp3 · .mp4 · .wav · .m4a</p>
+      <p className="text-xs text-muted-foreground mt-4">.mp3 · .mp4 · .wav · .m4a · .mov · any size</p>
     </motion.div>
   )
 }

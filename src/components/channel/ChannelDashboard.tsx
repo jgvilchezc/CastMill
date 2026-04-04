@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Loader2, RefreshCw, BarChart3, Video, TrendingUp, Brain, BarChart2, Lightbulb, CheckCircle2 } from "lucide-react"
+import { Loader2, RefreshCw, BarChart3, Video, TrendingUp, Brain, BarChart2, Lightbulb, CheckCircle2, Sparkles } from "lucide-react"
 import { DiagnosisPanel } from "./DiagnosisPanel"
 import { VideoList } from "./VideoList"
+import { InspirationPanel } from "./InspirationPanel"
 
 const ANALYSIS_STEPS = [
   { icon: BarChart2, label: "Reading video performance data", duration: 4000 },
@@ -115,6 +116,9 @@ export function ChannelDashboard({ channel, videos, onVideosUpdate }: ChannelDas
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(
     (channel.analysis as Record<string, unknown>) ?? null
   )
+  const [inspiration, setInspiration] = useState<Record<string, unknown> | null>(
+    (channel.inspiration as Record<string, unknown>) ?? null
+  )
 
   async function runAnalysis() {
     setAnalyzing(true)
@@ -186,6 +190,10 @@ export function ChannelDashboard({ channel, videos, onVideosUpdate }: ChannelDas
             <Video className="h-3.5 w-3.5" />
             Videos ({videos.length})
           </TabsTrigger>
+          <TabsTrigger value="inspiration" className="gap-1.5" disabled={!analysis}>
+            <Sparkles className="h-3.5 w-3.5" />
+            Inspiration
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="diagnosis" className="mt-4">
@@ -214,6 +222,18 @@ export function ChannelDashboard({ channel, videos, onVideosUpdate }: ChannelDas
 
         <TabsContent value="videos" className="mt-4">
           <VideoList videos={videos} channelId={channel.id as string} onUpdate={onVideosUpdate} />
+        </TabsContent>
+
+        <TabsContent value="inspiration" className="mt-4">
+          {analysis && (
+            <InspirationPanel
+              channelId={channel.id as string}
+              channel={{ ...channel, analysis }}
+              videos={videos}
+              initialInspiration={inspiration as Parameters<typeof InspirationPanel>[0]["initialInspiration"]}
+              onInspirationUpdate={(updated) => setInspiration(updated as Record<string, unknown>)}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

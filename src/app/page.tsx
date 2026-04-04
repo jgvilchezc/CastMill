@@ -128,10 +128,13 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild className="font-medium hover:text-primary transition-colors text-white hover:bg-white/10">
+            <Link href="/pricing">Pricing</Link>
+          </Button>
+          <Button variant="ghost" asChild className="font-medium hover:text-primary transition-colors text-white hover:bg-white/10">
             <Link href="/login">Log in</Link>
           </Button>
           <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-none px-6">
-            <Link href="/register">Get Started</Link>
+            <Link href="/register">Start Free</Link>
           </Button>
         </div>
       </nav>
@@ -154,7 +157,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="hero-desc text-base md:text-2xl text-muted-foreground max-w-3xl mb-12 leading-relaxed font-mono">
-            Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.
+            Drop any episode. Get blog posts, social threads, newsletters, clips, and thumbnails — all voice-matched to your style. In 2 minutes.
           </p>
 
           <div className="hero-buttons flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
@@ -164,9 +167,17 @@ export default function LandingPage() {
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-base md:text-xl h-16 md:h-20 px-8 md:px-12 rounded-none group shadow-[8px_8px_0_0_rgba(255,255,255,0.1)] hover:shadow-[4px_4px_0_0_rgba(255,255,255,0.1)] hover:translate-y-1 hover:translate-x-1 transition-all w-full sm:w-auto"
             >
               <Link href="/register" className="flex items-center justify-center gap-3">
-                START CREATING
+                START FREE — NO CARD REQUIRED
                 <ArrowRight className="w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-2 transition-transform" />
               </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="font-bold text-base md:text-xl h-16 md:h-20 px-8 md:px-12 rounded-none border-2 border-white/20 text-white bg-transparent hover:bg-white/10 w-full sm:w-auto"
+            >
+              <Link href="/pricing">See pricing</Link>
             </Button>
           </div>
         </div>
@@ -262,12 +273,12 @@ export default function LandingPage() {
 
         <div className="features-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[
-            { icon: FileText, title: "SEO Blogs", desc: "Long-form articles that rank on Google, drafted in your exact tone of voice.", color: "text-primary", border: "border-primary" },
-            { icon: MessageSquare, title: "Social Threads", desc: "Twitter/X and LinkedIn threads optimized for maximum engagement and reach.", color: "text-chart-2", border: "border-chart-2" },
-            { icon: LayoutTemplate, title: "Newsletters", desc: "Beautifully formatted email newsletters ready to send to your audience.", color: "text-chart-4", border: "border-chart-4" },
-            { icon: Mic, title: "Voice Matching", desc: "We train on your past content to write exactly how you speak and create.", color: "text-chart-5", border: "border-chart-5" },
-            { icon: Share2, title: "Channel Optimizer", desc: "Analyze your YouTube channel, find viral moments, and repurpose every video.", color: "text-primary", border: "border-primary" },
-            { icon: Zap, title: "Viral Hooks", desc: "AI identifies the most controversial and engaging moments to use as promo material.", color: "text-chart-2", border: "border-chart-2" }
+            { icon: FileText,      title: "SEO Blog Post",      desc: "Long-form articles that rank on Google, drafted in your exact tone of voice.",                        color: "text-primary",  border: "border-primary"  },
+            { icon: MessageSquare, title: "Social Threads",      desc: "Twitter/X and LinkedIn threads optimized for maximum engagement and reach.",                         color: "text-chart-2",  border: "border-chart-2"  },
+            { icon: LayoutTemplate,title: "Email Newsletter",    desc: "Beautifully formatted newsletters ready to send. Keep your audience between episodes.",               color: "text-chart-4",  border: "border-chart-4"  },
+            { icon: Mic,           title: "Voice Matching",      desc: "Our Voice Profile Engine writes in your vocabulary, tone, and style — not generic AI.",              color: "text-chart-5",  border: "border-chart-5"  },
+            { icon: Share2,        title: "Channel Optimizer",   desc: "Import your YouTube channel, diagnose performance, find viral moments, and generate clip ideas.",    color: "text-primary",  border: "border-primary"  },
+            { icon: Zap,           title: "YouTube + Thumbnails","desc": "SEO-optimized YouTube descriptions and AI-generated thumbnails — eye-catching, every episode.", color: "text-chart-2",  border: "border-chart-2"  }
           ].map((feature, i) => (
             <div key={i} className={`feature-card p-10 border-4 ${feature.border} bg-card hover:-translate-y-2 hover:-translate-x-2 transition-transform duration-300 shadow-[8px_8px_0_0_currentColor] group`} style={{ color: "var(--color-border)" }}>
               <div className="text-foreground">
@@ -284,11 +295,15 @@ export default function LandingPage() {
       <section className="cta-section relative z-10 w-full min-h-[80vh] bg-primary flex flex-col items-center justify-center overflow-hidden border-t-4 border-foreground text-primary-foreground">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
         
-        <h2 className="cta-massive-text font-heading font-black uppercase tracking-tighter leading-none text-center mb-12 px-4"
+        <h2 className="cta-massive-text font-heading font-black uppercase tracking-tighter leading-none text-center mb-6 px-4"
           style={{ fontSize: "clamp(3rem, 14vw, 12vw)" }}>
-          GO VIRAL <br/>
-          <span className="text-foreground">TODAY.</span>
+          STOP WRITING.<br/>
+          <span className="text-foreground">START EXPANDING.</span>
         </h2>
+
+        <p className="text-lg md:text-xl text-primary-foreground/70 font-mono text-center mb-10 px-4">
+          2 episodes/month. 3 content formats. Forever free.
+        </p>
         
         <Button 
           asChild 
@@ -296,7 +311,7 @@ export default function LandingPage() {
           className="bg-foreground text-background hover:bg-foreground/90 font-bold text-lg md:text-2xl h-16 md:h-24 px-10 md:px-16 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,0.5)] hover:translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0_0_rgba(0,0,0,0.5)] transition-all z-10"
         >
           <Link href="/register" className="flex items-center gap-3">
-            START FOR FREE
+            CREATE FREE ACCOUNT
             <Zap className="w-6 h-6 md:w-8 md:h-8" />
           </Link>
         </Button>
@@ -312,6 +327,7 @@ export default function LandingPage() {
             © {new Date().getFullYear()} Expandcast Inc. All rights reserved.
           </div>
           <div className="flex gap-6 text-zinc-500 font-mono text-sm uppercase">
+            <Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
             <Link href="#" className="hover:text-primary transition-colors">Twitter</Link>
             <Link href="#" className="hover:text-primary transition-colors">Terms</Link>
             <Link href="#" className="hover:text-primary transition-colors">Privacy</Link>

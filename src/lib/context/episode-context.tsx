@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
+import type { GenerationParams } from "@/lib/generation-params";
 
 type EpisodeRow = Database["public"]["Tables"]["episodes"]["Row"];
 type TranscriptRow = Database["public"]["Tables"]["transcripts"]["Row"];
@@ -23,6 +24,7 @@ export interface Episode {
   guests: string[];
   description: string | null;
   thumbnailUrl: string | null;
+  viralMoments: unknown | null;
 }
 
 export interface Transcript {
@@ -53,6 +55,7 @@ function rowToEpisode(row: EpisodeRow): Episode {
     guests: row.guests,
     description: row.description,
     thumbnailUrl: row.thumbnail_url,
+    viralMoments: row.viral_moments ?? null,
   };
 }
 
@@ -84,8 +87,9 @@ interface EpisodeContextType {
   isLoadingEpisodes: boolean;
 
   addEpisode: (ep: Omit<Episode, "id" | "date" | "generationCount">) => Promise<Episode>;
+  deleteEpisode: (id: string) => Promise<void>;
   selectEpisode: (id: string) => void;
-  generateContent: (episodeId: string, format: ContentFormat) => Promise<void>;
+  generateContent: (episodeId: string, format: ContentFormat, params?: GenerationParams) => Promise<void>;
   updateTranscript: (episodeId: string, text: string, segments?: unknown) => Promise<void>;
   refreshEpisode: (episodeId: string) => Promise<void>;
 }
@@ -172,6 +176,19 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return episode;
   };
 
+  const deleteEpisode = async (id: string) => {
+    const { error } = await supabase.from("episodes").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    setEpisodes(prev => prev.filter(e => e.id !== id));
+    setTranscripts(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setGenerations(prev => prev.filter(g => g.episodeId !== id));
+    setCurrentEpisode(prev => (prev?.id === id ? null : prev));
+  };
+
   const selectEpisode = (id: string) => {
     const ep = episodes.find(e => e.id === id);
     if (ep) setCurrentEpisode(ep);
@@ -206,7 +223,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const generateContent = async (episodeId: string, format: ContentFormat) => {
+  const generateContent = async (episodeId: string, format: ContentFormat, params?: GenerationParams) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -249,7 +266,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           res = await fetch("/api/ai/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ format, transcript: transcriptText }),
+            body: JSON.stringify({ format, transcript: transcriptText, params }),
             signal: controller.signal,
           });
         }
@@ -324,7 +341,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <EpisodeContext.Provider value={{
       episodes, currentEpisode, transcripts, generations, isLoadingEpisodes,
-      addEpisode, selectEpisode, generateContent, updateTranscript, refreshEpisode,
+      addEpisode, deleteEpisode, selectEpisode, generateContent, updateTranscript, refreshEpisode,
     }}>
       {children}
     </EpisodeContext.Provider>
