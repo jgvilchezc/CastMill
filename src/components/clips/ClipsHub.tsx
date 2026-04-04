@@ -16,6 +16,7 @@ interface ClipsHubProps {
   episodeTitle: string
   topics: string[]
   transcriptText: string
+  transcriptSegments?: unknown
   cachedMoments?: ViralMoment[] | null
 }
 
@@ -28,7 +29,7 @@ function updateMomentHooks(moments: ViralMoment[], momentId: string, hooks: Hook
   return moments.map(m => m.id === momentId ? { ...m, hooks } : m)
 }
 
-export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cachedMoments }: ClipsHubProps) {
+export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, transcriptSegments, cachedMoments }: ClipsHubProps) {
   const { user } = useUser()
   const plan = user?.plan ?? "free"
   const planConfig = PLANS[plan]
@@ -65,7 +66,7 @@ export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cach
     )
   }
 
-  async function detectMoments() {
+  async function detectMoments(force = false) {
     if (!transcriptText) {
       setDetectError("No transcript available. Process the episode first.")
       return
@@ -76,7 +77,7 @@ export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cach
       const res = await fetch("/api/ai/detect-moments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ episodeId, transcript: transcriptText, topics }),
+        body: JSON.stringify({ episodeId, transcript: transcriptText, segments: transcriptSegments, topics, force }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Detection failed")
@@ -115,7 +116,7 @@ export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cach
           <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
             AI scans your transcript and surfaces the {planConfig.clipsPerEpisode} moments most likely to go viral on TikTok or Reels.
           </p>
-          <Button onClick={detectMoments} disabled={detecting || !transcriptText}>
+          <Button onClick={() => detectMoments()} disabled={detecting || !transcriptText}>
             {detecting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -151,7 +152,7 @@ export function ClipsHub({ episodeId, episodeTitle, topics, transcriptText, cach
                 </span>
               )}
             </p>
-            <Button variant="ghost" size="sm" onClick={detectMoments} disabled={detecting}>
+            <Button variant="ghost" size="sm" onClick={() => detectMoments(true)} disabled={detecting}>
               {detecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               <span className="ml-1.5">Re-scan</span>
             </Button>

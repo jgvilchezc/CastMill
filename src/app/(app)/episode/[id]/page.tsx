@@ -199,6 +199,7 @@ export default function EpisodePage() {
             episodeTitle={episode.title}
             topics={episode.topics}
             transcriptText={transcript?.text ?? ""}
+            transcriptSegments={transcript?.segments}
             cachedMoments={cachedMoments}
           />
         </TabsContent>

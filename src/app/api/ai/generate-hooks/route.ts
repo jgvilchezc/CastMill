@@ -57,54 +57,81 @@ Return ONLY valid JSON with no markdown:
   ]
 }`;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
+  const modelSets = [
+    [
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "qwen/qwen3.6-plus-preview:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+    ],
+    [
+      "stepfun/step-3.5-flash:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "qwen/qwen3.6-plus-preview:free",
+    ],
+  ];
 
-  let orRes: Response;
-  try {
-    orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      signal: controller.signal,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://expandcast.com",
-        "X-Title": "Expandcast",
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
-        models: [
-          "meta-llama/llama-3.3-70b-instruct:free",
-          "qwen/qwen3.6-plus-preview:free",
-        ],
-        route: "fallback",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1500,
-      }),
-    });
-  } catch (err) {
-    clearTimeout(timeout);
-    const msg = err instanceof Error && err.name === "AbortError"
-      ? "Hook generation timed out — please try again"
-      : "Could not reach AI service — check your connection";
-    console.error("generate-hooks fetch error:", err);
-    return NextResponse.json({ error: msg }, { status: 502 });
+  const basePayload = {
+    route: "fallback",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.7,
+    max_tokens: 1500,
+  };
+
+  let orRes: Response | null = null;
+  let lastErr: unknown = null;
+
+  for (let attempt = 0; attempt < modelSets.length; attempt++) {
+    const models = modelSets[attempt];
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
+    try {
+      orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        signal: controller.signal,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://expandcast.com",
+          "X-Title": "Expandcast",
+        },
+        body: JSON.stringify({ ...basePayload, model: models[0], models }),
+      });
+      clearTimeout(timeout);
+
+      if (orRes.ok) break;
+
+      let detail = `OpenRouter ${orRes.status}`;
+      try {
+        const body = await orRes.json();
+        detail = body?.error?.message ?? body?.error ?? detail;
+      } catch { /* ignore */ }
+      lastErr = detail;
+      console.error(`generate-hooks attempt ${attempt + 1} failed:`, detail);
+
+      if (attempt < modelSets.length - 1) {
+        await new Promise(r => setTimeout(r, 1500));
+        orRes = null;
+      }
+    } catch (err) {
+      clearTimeout(timeout);
+      lastErr = err;
+      console.error(`generate-hooks attempt ${attempt + 1} error:`, err);
+
+      if (attempt < modelSets.length - 1) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
   }
 
-  clearTimeout(timeout);
-
-  if (!orRes.ok) {
-    let detail = `OpenRouter ${orRes.status}`;
-    try {
-      const body = await orRes.json();
-      detail = body?.error?.message ?? body?.error ?? detail;
-    } catch { /* ignore */ }
-    console.error("generate-hooks OpenRouter error:", detail);
-    return NextResponse.json(
-      { error: `Hook generation failed: ${detail}` },
-      { status: 502 }
-    );
+  if (!orRes || !orRes.ok) {
+    const isTimeout = lastErr instanceof Error && lastErr.name === "AbortError";
+    const detail = isTimeout
+      ? "Hook generation timed out — please try again"
+      : typeof lastErr === "string"
+        ? `Hook generation failed: ${lastErr}`
+        : "All AI providers are busy — please try again in a moment";
+    return NextResponse.json({ error: detail }, { status: 502 });
   }
 
   const orData = await orRes.json();

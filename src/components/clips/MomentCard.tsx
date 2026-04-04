@@ -15,6 +15,7 @@ export interface ViralMoment {
   id: string
   quote: string
   startTimecode: string
+  endTimecode?: string
   durationSeconds: number
   viralScore: number
   reason: string
@@ -77,7 +78,7 @@ export function MomentCard({ moment, index, onHookLab, onCut }: MomentCardProps)
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
-                {moment.startTimecode} · {moment.durationSeconds}s
+                {moment.startTimecode}{moment.endTimecode ? ` → ${moment.endTimecode}` : ""} · {moment.durationSeconds}s
               </div>
               <ScoreBar score={moment.viralScore} />
             </div>
