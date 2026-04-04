@@ -260,7 +260,7 @@ export async function GET(req: Request) {
   await supabase
     .from("trend_digests")
     .upsert(
-      { niche, data: digest, expires_at: expiresAt },
+      { niche, data: JSON.parse(JSON.stringify(digest)), expires_at: expiresAt },
       { onConflict: "niche" },
     );
 

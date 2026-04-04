@@ -24,7 +24,7 @@ export interface Episode {
   guests: string[];
   description: string | null;
   thumbnailUrl: string | null;
-  viralMoments: unknown | null;
+  viralMoments?: unknown | null;
 }
 
 export interface Transcript {

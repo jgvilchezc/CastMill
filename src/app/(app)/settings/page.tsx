@@ -110,7 +110,7 @@ export default function SettingsPage() {
   async function disconnect(platform: string) {
     setDisconnecting(platform);
     const supabase = createClient();
-    await supabase.from("connected_accounts").delete().eq("platform", platform);
+    await supabase.from("connected_accounts").delete().eq("platform", platform as "tiktok" | "instagram");
     setAccounts((prev) => {
       const next = { ...prev };
       delete next[platform];

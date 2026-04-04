@@ -1,4 +1,5 @@
 import type { ContentFormat } from "@/lib/context/episode-context";
+export type { ContentFormat };
 
 export const LANGUAGES = [
   { value: "auto",       label: "Auto (detect)" },
