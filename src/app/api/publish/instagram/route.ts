@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isValidPublicUrl, sanitizeString } from "@/lib/security/validate";
 
 export const maxDuration = 60;
 
@@ -24,7 +25,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: account } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: account } = await (supabase as any)
     .from("connected_accounts")
     .select("access_token, platform_user_id, expires_at")
     .eq("user_id", user.id)
@@ -47,12 +49,21 @@ export async function POST(req: Request) {
 
   const { videoUrl, caption } = await req.json();
 
-  if (!videoUrl) {
+  if (!videoUrl || typeof videoUrl !== "string") {
     return NextResponse.json(
       { error: "videoUrl is required (publicly accessible URL)" },
       { status: 400 }
     );
   }
+
+  if (!isValidPublicUrl(videoUrl)) {
+    return NextResponse.json(
+      { error: "videoUrl must be a valid public HTTPS URL" },
+      { status: 400 }
+    );
+  }
+
+  const safeCaption = sanitizeString(caption, 2200);
 
   const igUserId = account.platform_user_id;
   const token = account.access_token;
@@ -65,7 +76,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         media_type: "REELS",
         video_url: videoUrl,
-        caption: caption ?? "",
+        caption: safeCaption,
         share_to_feed: true,
         access_token: token,
       }),

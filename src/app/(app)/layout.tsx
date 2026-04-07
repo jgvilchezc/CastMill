@@ -5,17 +5,14 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { Header } from "@/components/layout/Header"
 import { MobileSidebar } from "@/components/layout/MobileSidebar"
 import { useUser } from "@/lib/context/user-context"
+import { AppLayoutSkeleton } from "@/components/skeletons"
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { isLoading } = useUser()
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <AppLayoutSkeleton />
   }
 
   return (

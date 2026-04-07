@@ -324,13 +324,13 @@ export default function LandingPage() {
             <span className="font-heading font-bold text-xl tracking-tighter">Expandcast</span>
           </div>
           <div className="text-zinc-500 font-mono text-sm uppercase">
-            © {new Date().getFullYear()} Expandcast Inc. All rights reserved.
+            © {new Date().getFullYear()} Expandcast. All rights reserved.
           </div>
           <div className="flex gap-6 text-zinc-500 font-mono text-sm uppercase">
             <Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
             <Link href="#" className="hover:text-primary transition-colors">Twitter</Link>
-            <Link href="#" className="hover:text-primary transition-colors">Terms</Link>
-            <Link href="#" className="hover:text-primary transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
           </div>
         </div>
       </footer>

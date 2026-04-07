@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { PlanId } from "@/lib/plans";
 import { PLANS } from "@/lib/plans";
+import { AdminUserDetailSkeleton } from "@/components/skeletons";
 
 interface EpisodeRow {
   id: string;
@@ -33,8 +34,8 @@ interface UserDetail {
     credits: number;
     episodes_used_this_month: number;
     billing_period_start: string;
-    lemon_squeezy_customer_id: string | null;
-    lemon_squeezy_subscription_id: string | null;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
     created_at: string;
   };
   email: string | null;
@@ -135,12 +136,7 @@ export default function UserDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="p-8 flex items-center gap-2 text-[#555]">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-xs">Loading...</span>
-      </div>
-    );
+    return <AdminUserDetailSkeleton />;
   }
 
   if (!data) {
@@ -207,8 +203,8 @@ export default function UserDetailPage() {
             Subscription
           </h2>
           <div className="space-y-0">
-            <InfoRow label="LS Customer ID" value={profile.lemon_squeezy_customer_id} />
-            <InfoRow label="LS Subscription ID" value={profile.lemon_squeezy_subscription_id} />
+            <InfoRow label="Stripe Customer ID" value={profile.stripe_customer_id} />
+            <InfoRow label="Stripe Subscription ID" value={profile.stripe_subscription_id} />
             <InfoRow label="Billing Period Start" value={profile.billing_period_start} />
           </div>
           <div className="mt-3 pt-3 border-t border-[#1a1a1a] grid grid-cols-3 gap-2 text-center">

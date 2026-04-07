@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Copy, Check, Download, Loader2, ImageIcon, Sparkles, RefreshCw } from "lucide-react"
+import { Copy, Check, Download, Loader2, ImageIcon, Sparkles, RefreshCw, Pencil, Save, X } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import MarkdownIt from "markdown-it"
-import { type Generation, type ContentFormat } from "@/lib/context/episode-context"
+import { type Generation, type ContentFormat, useEpisodes } from "@/lib/context/episode-context"
 import { GenerationSettingsBar } from "./GenerationSettingsBar"
 import type { GenerationParams } from "@/lib/generation-params"
 
@@ -16,6 +16,7 @@ interface ContentPanelProps {
   params: GenerationParams
   onParamsChange: (p: GenerationParams) => void
   onGenerate: () => void
+  episodeId: string
 }
 
 const formatLabels: Record<ContentFormat, string> = {
@@ -25,10 +26,17 @@ const formatLabels: Record<ContentFormat, string> = {
   newsletter:   "Newsletter",
   youtube_desc: "YouTube Description",
   thumbnail:    "Thumbnail",
+  chapters:     "Chapters",
+  quotes:       "Quotes",
+  show_notes:   "Show Notes",
 }
 
-export function ContentPanel({ format, generation, params, onParamsChange, onGenerate }: ContentPanelProps) {
+export function ContentPanel({ format, generation, params, onParamsChange, onGenerate, episodeId }: ContentPanelProps) {
+  const { updateGeneration } = useEpisodes()
   const [copied, setCopied] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editText, setEditText] = useState("")
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   function handleCopy(content: string) {
     navigator.clipboard.writeText(content)
@@ -46,8 +54,34 @@ export function ContentPanel({ format, generation, params, onParamsChange, onGen
     URL.revokeObjectURL(url)
   }
 
+  function startEditing(content: string) {
+    setEditText(content)
+    setIsEditing(true)
+  }
+
+  async function saveEdit() {
+    setIsSavingEdit(true)
+    try {
+      await updateGeneration(episodeId, format, editText)
+      setIsEditing(false)
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
   if (format === "thumbnail") {
     return <ThumbnailPanel generation={generation} onGenerate={onGenerate} />
+  }
+
+  if (format === "quotes" && generation && generation !== "generating") {
+    return (
+      <QuotesPanel
+        generation={generation}
+        params={params}
+        onParamsChange={onParamsChange}
+        onGenerate={onGenerate}
+      />
+    )
   }
 
   return (
@@ -109,39 +143,167 @@ export function ContentPanel({ format, generation, params, onParamsChange, onGen
           >
             {/* Action bar */}
             <div className="flex items-center justify-between gap-2 mb-4">
-              <button
-                onClick={onGenerate}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              >
-                <RefreshCw className="h-3 w-3" />
-                Regenerate
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onGenerate}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Regenerate
+                </button>
+              </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleCopy(generation.content)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
-                    hover:border-border hover:text-foreground transition-all"
-                >
-                  {copied
-                    ? <><Check className="h-3 w-3 text-primary" />Copied</>
-                    : <><Copy className="h-3 w-3" />Copy</>
-                  }
-                </button>
-                <button
-                  onClick={() => handleDownload(generation.content)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
-                    hover:border-border hover:text-foreground transition-all"
-                >
-                  <Download className="h-3 w-3" />
-                  Save
-                </button>
+                {isEditing ? (
+                  <>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      disabled={isSavingEdit}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
+                        hover:border-border hover:text-foreground transition-all"
+                    >
+                      <X className="h-3 w-3" />
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveEdit}
+                      disabled={isSavingEdit}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-primary-foreground bg-primary border border-primary rounded
+                        hover:bg-primary/90 transition-all"
+                    >
+                      <Save className="h-3 w-3" />
+                      {isSavingEdit ? "Saving…" : "Save"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => startEditing(generation.content)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
+                        hover:border-border hover:text-foreground transition-all"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleCopy(generation.content)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
+                        hover:border-border hover:text-foreground transition-all"
+                    >
+                      {copied
+                        ? <><Check className="h-3 w-3 text-primary" />Copied</>
+                        : <><Copy className="h-3 w-3" />Copy</>
+                      }
+                    </button>
+                    <button
+                      onClick={() => handleDownload(generation.content)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground border border-border/60 rounded
+                        hover:border-border hover:text-foreground transition-all"
+                    >
+                      <Download className="h-3 w-3" />
+                      Save
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            <MarkdownContent content={generation.content} />
+            {isEditing ? (
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={20}
+                className="w-full text-sm leading-relaxed font-mono px-4 py-3 border border-border bg-background rounded resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            ) : (
+              <MarkdownContent content={generation.content} />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+interface QuotesPanelProps {
+  generation: Generation
+  params: GenerationParams
+  onParamsChange: (p: GenerationParams) => void
+  onGenerate: () => void
+}
+
+function parseQuotes(content: string): { text: string; speaker: string }[] {
+  const lines = content.split("\n").filter(l => l.trim())
+  const quotes: { text: string; speaker: string }[] = []
+  let current = ""
+
+  for (const line of lines) {
+    if (line.trim().startsWith(">")) {
+      current = line.replace(/^>\s*/, "").trim()
+    } else if (line.trim().startsWith("—") || line.trim().startsWith("–") || line.trim().startsWith("-")) {
+      const speaker = line.replace(/^[—–-]\s*/, "").trim()
+      if (current) {
+        quotes.push({ text: current, speaker })
+        current = ""
+      }
+    } else if (current) {
+      quotes.push({ text: current, speaker: "" })
+      current = ""
+    }
+  }
+  if (current) quotes.push({ text: current, speaker: "" })
+
+  if (quotes.length === 0) {
+    return [{ text: content, speaker: "" }]
+  }
+  return quotes
+}
+
+function QuotesPanel({ generation, params, onParamsChange, onGenerate }: QuotesPanelProps) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const quotes = parseQuotes(generation.content)
+
+  function handleCopyQuote(text: string, idx: number) {
+    navigator.clipboard.writeText(text)
+    setCopiedIdx(idx)
+    setTimeout(() => setCopiedIdx(null), 2000)
+  }
+
+  return (
+    <div>
+      <GenerationSettingsBar format="quotes" params={params} onChange={onParamsChange} />
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <button
+          onClick={onGenerate}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+        >
+          <RefreshCw className="h-3 w-3" />
+          Regenerate
+        </button>
+      </div>
+      <div className="space-y-3">
+        {quotes.map((q, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="border-l-2 border-primary/50 pl-4 py-3 pr-3 bg-card/50 rounded-r group relative"
+          >
+            <p className="text-sm leading-relaxed italic text-foreground/80">&ldquo;{q.text}&rdquo;</p>
+            {q.speaker && (
+              <p className="text-xs text-muted-foreground mt-1.5 font-mono">&mdash; {q.speaker}</p>
+            )}
+            <button
+              onClick={() => handleCopyQuote(q.text, i)}
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity
+                flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-border/60 rounded
+                hover:border-border hover:text-foreground"
+            >
+              {copiedIdx === i ? <><Check className="h-3 w-3 text-primary" />Copied</> : <><Copy className="h-3 w-3" />Copy</>}
+            </button>
+          </motion.div>
+        ))}
+      </div>
     </div>
   )
 }

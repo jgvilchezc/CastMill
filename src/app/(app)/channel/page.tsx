@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { ChannelListSkeleton } from "@/components/skeletons"
 
 interface SavedChannel {
   id: string
@@ -78,10 +79,7 @@ export default function ChannelPage() {
 
       {/* Saved Channels */}
       {loadingChannels ? (
-        <div className="flex items-center gap-2 py-8 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading your channels…
-        </div>
+        <ChannelListSkeleton />
       ) : savedChannels.length > 0 && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">

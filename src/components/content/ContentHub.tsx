@@ -14,8 +14,11 @@ const TABS: { format: ContentFormat; label: string; requiredPlan: string }[] = [
   { format: "blog",         label: "Blog",        requiredPlan: "free"    },
   { format: "tweet_thread", label: "Tweets",      requiredPlan: "free"    },
   { format: "linkedin",     label: "LinkedIn",    requiredPlan: "free"    },
+  { format: "quotes",       label: "Quotes",      requiredPlan: "free"    },
+  { format: "chapters",     label: "Chapters",    requiredPlan: "free"    },
   { format: "newsletter",   label: "Newsletter",  requiredPlan: "starter" },
   { format: "youtube_desc", label: "YouTube",     requiredPlan: "starter" },
+  { format: "show_notes",   label: "Show Notes",  requiredPlan: "starter" },
   { format: "thumbnail",    label: "Thumbnail",   requiredPlan: "starter" },
 ]
 
@@ -86,18 +89,21 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
       .map(t => t.format)
     if (formats.length === 0) return
 
-    for (const format of formats) {
-      setPendingFormats(prev => new Set([...prev, format]))
-      try {
-        await generateContent(episodeId, format, params)
-      } finally {
-        setPendingFormats(prev => {
-          const next = new Set(prev)
-          next.delete(format)
-          return next
-        })
-      }
-    }
+    setPendingFormats(prev => new Set([...prev, ...formats]))
+
+    await Promise.allSettled(
+      formats.map(async (format) => {
+        try {
+          await generateContent(episodeId, format, params)
+        } finally {
+          setPendingFormats(prev => {
+            const next = new Set(prev)
+            next.delete(format)
+            return next
+          })
+        }
+      })
+    )
     onGenerateAllDone?.()
   }, [episodeId, generateContent, onGenerateAllDone, pendingFormats, canUseFormat, params])
 
@@ -157,6 +163,7 @@ export function ContentHub({ episodeId, initialGenerations, triggerGenerateAll, 
                 params={params}
                 onParamsChange={handleParamsChange}
                 onGenerate={() => generateSingle(format)}
+                episodeId={episodeId}
               />
             ) : (
               <LockedFormatCard label={label} requiredPlan={requiredPlan} />

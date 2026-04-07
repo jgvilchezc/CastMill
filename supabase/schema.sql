@@ -21,8 +21,8 @@ create table if not exists public.profiles (
 alter table public.profiles
   add column if not exists episodes_used_this_month    int  not null default 0,
   add column if not exists billing_period_start        date not null default current_date,
-  add column if not exists lemon_squeezy_customer_id   text,
-  add column if not exists lemon_squeezy_subscription_id text;
+  add column if not exists stripe_customer_id     text,
+  add column if not exists stripe_subscription_id text;
 
 alter table public.profiles enable row level security;
 
@@ -119,7 +119,7 @@ create table if not exists public.generations (
   episode_id uuid not null references public.episodes(id) on delete cascade,
   user_id    uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
-  format     text not null check (format in ('blog', 'tweet_thread', 'linkedin', 'newsletter', 'youtube_desc', 'thumbnail')),
+  format     text not null check (format in ('blog', 'tweet_thread', 'linkedin', 'newsletter', 'youtube_desc', 'thumbnail', 'chapters', 'quotes', 'show_notes')),
   content    text not null default '',
   status     text not null default 'ready' check (status in ('ready', 'generating'))
 );
@@ -235,3 +235,27 @@ alter table public.connected_accounts enable row level security;
 create policy "Users can manage own connected accounts"
   on public.connected_accounts for all
   using (auth.uid() = user_id);
+
+
+-- 11. RSS FEEDS (auto-import from podcast platforms)
+create table if not exists public.rss_feeds (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  feed_url        text not null,
+  last_synced_at  timestamptz not null default now(),
+  episode_guids   text[] not null default '{}',
+  created_at      timestamptz not null default now(),
+  unique (user_id, feed_url)
+);
+
+alter table public.rss_feeds enable row level security;
+
+create policy "Users can manage own rss feeds"
+  on public.rss_feeds for all
+  using (auth.uid() = user_id);
+
+
+-- 12. FULL-TEXT SEARCH INDEX on transcripts
+create index if not exists transcripts_text_fts
+  on public.transcripts
+  using gin(to_tsvector('english', text));

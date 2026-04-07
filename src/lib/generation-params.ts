@@ -61,6 +61,16 @@ export interface FormatOptions {
     includeKeywords: boolean;
   };
   thumbnail: Record<string, never>;
+  chapters: {
+    chapterCount: "5" | "7" | "10" | "auto";
+    includeDescriptions: boolean;
+  };
+  quotes: Record<string, never>;
+  show_notes: {
+    includeGuestBio: boolean;
+    includeResources: boolean;
+    includeTimestamps: boolean;
+  };
 }
 
 export interface GenerationParams {
@@ -77,6 +87,9 @@ export const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
   newsletter:   { subjectLineStyle: "teaser", includeQuote: true },
   youtube_desc: { includeChapters: true,   includeKeywords: true },
   thumbnail:    {},
+  chapters:     { chapterCount: "auto",    includeDescriptions: false },
+  quotes:       {},
+  show_notes:   { includeGuestBio: true,   includeResources: true, includeTimestamps: true },
 };
 
 export const DEFAULT_PARAMS: GenerationParams = {

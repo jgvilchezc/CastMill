@@ -10,7 +10,7 @@ type TranscriptRow = Database["public"]["Tables"]["transcripts"]["Row"];
 type GenerationRow = Database["public"]["Tables"]["generations"]["Row"];
 type GenerationInsert = Database["public"]["Tables"]["generations"]["Insert"];
 
-export type ContentFormat = "blog" | "tweet_thread" | "linkedin" | "newsletter" | "youtube_desc" | "thumbnail";
+export type ContentFormat = "blog" | "tweet_thread" | "linkedin" | "newsletter" | "youtube_desc" | "thumbnail" | "chapters" | "quotes" | "show_notes";
 
 // Shape that the rest of the app expects (snake_case → camelCase adapter)
 export interface Episode {
@@ -50,7 +50,7 @@ function rowToEpisode(row: EpisodeRow): Episode {
     date: row.created_at.split("T")[0],
     duration: row.duration,
     topics: row.topics,
-    status: row.status,
+    status: row.status as Episode["status"],
     generationCount: row.generation_count,
     guests: row.guests,
     description: row.description,
@@ -72,9 +72,9 @@ function rowToGeneration(row: GenerationRow): Generation {
   return {
     id: row.id,
     episodeId: row.episode_id,
-    format: row.format,
+    format: row.format as ContentFormat,
     content: row.content,
-    status: row.status,
+    status: row.status as Generation["status"],
     createdAt: row.created_at,
   };
 }
@@ -91,6 +91,7 @@ interface EpisodeContextType {
   selectEpisode: (id: string) => void;
   generateContent: (episodeId: string, format: ContentFormat, params?: GenerationParams) => Promise<void>;
   updateTranscript: (episodeId: string, text: string, segments?: unknown) => Promise<void>;
+  updateGeneration: (episodeId: string, format: ContentFormat, content: string) => Promise<void>;
   refreshEpisode: (episodeId: string) => Promise<void>;
 }
 
@@ -237,15 +238,18 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const transcript = transcripts[episodeId];
 
-      // If transcript isn't in local state yet, fetch it from DB
       let transcriptText = transcript?.text;
-      if (!transcriptText) {
+      let transcriptSegments = transcript?.segments;
+      if (!transcriptSegments && !transcriptText) {
         const { data } = await supabase
           .from("transcripts")
-          .select("text")
+          .select("text, segments")
           .eq("episode_id", episodeId)
           .maybeSingle();
-        transcriptText = data?.text ?? "";
+        if (data) {
+          transcriptText = data.text ?? "";
+          transcriptSegments = data.segments;
+        }
       }
 
       let content: string;
@@ -266,7 +270,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           res = await fetch("/api/ai/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ format, transcript: transcriptText, params }),
+            body: JSON.stringify({ format, transcript: transcriptText, segments: transcriptSegments, params }),
             signal: controller.signal,
           });
         }
@@ -283,7 +287,6 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         content = `Mock generated ${format} content. Set USE_REAL_AI=true and configure API keys to enable real generation.`;
       }
 
-      // Persist to DB
       const insert: GenerationInsert = {
         episode_id: episodeId,
         user_id: user.id,
@@ -318,6 +321,33 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const updateGeneration = async (episodeId: string, format: ContentFormat, content: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("generations")
+      .upsert(
+        {
+          episode_id: episodeId,
+          user_id: user.id,
+          format,
+          content,
+          status: "ready" as const,
+        },
+        { onConflict: "episode_id,format" }
+      )
+      .select()
+      .single();
+
+    if (!error && data) {
+      setGenerations(prev => [
+        rowToGeneration(data),
+        ...prev.filter(g => !(g.episodeId === episodeId && g.format === format)),
+      ]);
+    }
+  };
+
   const refreshEpisode = async (episodeId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -341,7 +371,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <EpisodeContext.Provider value={{
       episodes, currentEpisode, transcripts, generations, isLoadingEpisodes,
-      addEpisode, deleteEpisode, selectEpisode, generateContent, updateTranscript, refreshEpisode,
+      addEpisode, deleteEpisode, selectEpisode, generateContent, updateTranscript, updateGeneration, refreshEpisode,
     }}>
       {children}
     </EpisodeContext.Provider>

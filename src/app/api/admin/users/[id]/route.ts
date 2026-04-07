@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, createAdminClient } from "@/lib/supabase/admin";
+import { isValidUUID, parseJsonBody } from "@/lib/security/validate";
 
 export async function GET(
   _req: NextRequest,
@@ -12,6 +13,9 @@ export async function GET(
   }
 
   const { id } = await params;
+  if (!isValidUUID(id)) {
+    return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+  }
   const admin = createAdminClient();
 
   const [
@@ -56,7 +60,13 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await req.json();
+  if (!isValidUUID(id)) {
+    return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+  }
+
+  const { data: body, error: bodyError } = await parseJsonBody(req, 4096);
+  if (bodyError) return bodyError;
+
   const admin = createAdminClient();
 
   const allowedFields = [
@@ -66,10 +76,11 @@ export async function PATCH(
     "billing_period_start",
   ];
 
+  const parsedBody = body as Record<string, unknown>;
   const update: Record<string, unknown> = {};
   for (const field of allowedFields) {
-    if (field in body) {
-      update[field] = body[field];
+    if (field in parsedBody) {
+      update[field] = parsedBody[field];
     }
   }
 

@@ -47,7 +47,7 @@ export default function PricingPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval: annual ? "annual" : "monthly" }),
       });
       const data = await res.json();
       if (res.status === 401) {

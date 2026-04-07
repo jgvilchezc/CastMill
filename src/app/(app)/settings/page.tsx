@@ -11,12 +11,14 @@ import {
   AlertCircle,
   CreditCard,
   Zap,
+  Rss,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/context/user-context";
 import { PLANS } from "@/lib/plans";
+import { SettingsAccountsSkeleton } from "@/components/skeletons";
 
 interface ConnectedAccount {
   platform: "tiktok" | "instagram";
@@ -67,6 +69,10 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<"starter" | "pro" | null>(null);
+  const [rssFeedUrl, setRssFeedUrl] = useState("");
+  const [rssImporting, setRssImporting] = useState(false);
+  const [rssResult, setRssResult] = useState<{ imported: number; skipped: number; feedTitle?: string } | null>(null);
+  const [rssError, setRssError] = useState("");
   const billingSuccess = searchParams.get("billing") === "success";
 
   const justConnected = searchParams.get("connected");
@@ -75,12 +81,13 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const { data } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
         .from("connected_accounts")
         .select("platform, platform_username, expires_at");
       if (data) {
         const map: Record<string, ConnectedAccount> = {};
-        data.forEach((a) => {
+        data.forEach((a: ConnectedAccount) => {
           map[a.platform] = a as ConnectedAccount;
         });
         setAccounts(map);
@@ -96,7 +103,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: targetPlan }),
+        body: JSON.stringify({ plan: targetPlan, interval: "monthly" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Checkout failed");
@@ -110,7 +117,8 @@ export default function SettingsPage() {
   async function disconnect(platform: string) {
     setDisconnecting(platform);
     const supabase = createClient();
-    await supabase.from("connected_accounts").delete().eq("platform", platform as "tiktok" | "instagram");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("connected_accounts").delete().eq("platform", platform as "tiktok" | "instagram");
     setAccounts((prev) => {
       const next = { ...prev };
       delete next[platform];
@@ -175,14 +183,23 @@ export default function SettingsPage() {
               </p>
             </div>
             {plan !== "free" && (
-              <a
-                href="https://app.lemonsqueezy.com/my-orders"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/billing/portal", {
+                      method: "POST",
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error);
+                    window.location.href = data.url;
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground cursor-pointer"
               >
                 Manage subscription
-              </a>
+              </button>
             )}
           </div>
 
@@ -241,6 +258,74 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <section className="mb-8">
+        <h2 className="text-base font-semibold mb-4">RSS Feed Import</h2>
+        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Import episodes from your podcast RSS feed (Spotify, Apple Podcasts, Buzzsprout, etc.).
+          </p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Rss className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="url"
+                value={rssFeedUrl}
+                onChange={(e) => { setRssFeedUrl(e.target.value); setRssError(""); setRssResult(null); }}
+                placeholder="https://feeds.example.com/your-podcast"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-border bg-background rounded focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={async () => {
+                if (!rssFeedUrl.trim()) return;
+                setRssImporting(true);
+                setRssError("");
+                setRssResult(null);
+                try {
+                  const res = await fetch("/api/rss/import", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ feedUrl: rssFeedUrl.trim(), maxEpisodes: 10 }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error ?? "Import failed");
+                  setRssResult({ imported: data.imported, skipped: data.skipped, feedTitle: data.feedTitle });
+                } catch (err) {
+                  setRssError(err instanceof Error ? err.message : "Import failed");
+                } finally {
+                  setRssImporting(false);
+                }
+              }}
+              disabled={rssImporting || !rssFeedUrl.trim()}
+            >
+              {rssImporting ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Importing…</>
+              ) : (
+                "Import"
+              )}
+            </Button>
+          </div>
+          {rssError && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {rssError}
+            </div>
+          )}
+          {rssResult && (
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {rssResult.feedTitle && <span className="font-medium">{rssResult.feedTitle}:</span>}
+              {rssResult.imported} episode{rssResult.imported !== 1 ? "s" : ""} imported
+              {rssResult.skipped > 0 && `, ${rssResult.skipped} skipped (already exist)`}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Episodes are imported as metadata. Upload audio separately or use &ldquo;Paste transcript&rdquo; to add transcripts.
+          </p>
+        </div>
+      </section>
+
       <section>
         <h2 className="text-base font-semibold mb-4">Connected Accounts</h2>
 
@@ -256,6 +341,9 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {loading ? (
+          <SettingsAccountsSkeleton />
+        ) : (
         <div className="space-y-3">
           {(
             Object.keys(PLATFORM_META) as Array<keyof typeof PLATFORM_META>
@@ -299,9 +387,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                ) : account && !expired ? (
+                {account && !expired ? (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -334,6 +420,7 @@ export default function SettingsPage() {
             );
           })}
         </div>
+        )}
       </section>
     </div>
   );

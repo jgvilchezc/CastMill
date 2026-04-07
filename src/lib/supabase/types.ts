@@ -4,373 +4,454 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          created_at: string;
-          name: string | null;
-          avatar_url: string | null;
-          plan: "free" | "starter" | "pro";
-          credits: number;
-          episodes_used_this_month: number;
-          billing_period_start: string;
-          lemon_squeezy_customer_id: string | null;
-          lemon_squeezy_subscription_id: string | null;
-        };
-        Insert: {
-          id: string;
-          created_at?: string;
-          name?: string | null;
-          avatar_url?: string | null;
-          plan?: "free" | "starter" | "pro";
-          credits?: number;
-          episodes_used_this_month?: number;
-          billing_period_start?: string;
-          lemon_squeezy_customer_id?: string | null;
-          lemon_squeezy_subscription_id?: string | null;
-        };
-        Update: {
-          id?: string;
-          created_at?: string;
-          name?: string | null;
-          avatar_url?: string | null;
-          plan?: "free" | "starter" | "pro";
-          credits?: number;
-          episodes_used_this_month?: number;
-          billing_period_start?: string;
-          lemon_squeezy_customer_id?: string | null;
-          lemon_squeezy_subscription_id?: string | null;
-        };
-        Relationships: [];
-      };
-      voice_profiles: {
-        Row: {
-          id: string;
-          user_id: string;
-          created_at: string;
-          tone: string[];
-          vocabulary: string[];
-          pacing: string[];
-          common_hooks: string[];
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          created_at?: string;
-          tone: string[];
-          vocabulary: string[];
-          pacing: string[];
-          common_hooks: string[];
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          created_at?: string;
-          tone?: string[];
-          vocabulary?: string[];
-          pacing?: string[];
-          common_hooks?: string[];
-        };
-        Relationships: [];
-      };
-      episodes: {
-        Row: {
-          id: string;
-          user_id: string;
-          created_at: string;
-          title: string;
-          description: string | null;
-          duration: number;
-          topics: string[];
-          guests: string[];
-          status: "ready" | "processing" | "failed";
-          generation_count: number;
-          thumbnail_url: string | null;
-          viral_moments: Json | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          created_at?: string;
-          title: string;
-          description?: string | null;
-          duration?: number;
-          topics?: string[];
-          guests?: string[];
-          status?: "ready" | "processing" | "failed";
-          generation_count?: number;
-          thumbnail_url?: string | null;
-          viral_moments?: Json | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          created_at?: string;
-          title?: string;
-          description?: string | null;
-          duration?: number;
-          topics?: string[];
-          guests?: string[];
-          status?: "ready" | "processing" | "failed";
-          generation_count?: number;
-          thumbnail_url?: string | null;
-          viral_moments?: Json | null;
-        };
-        Relationships: [];
-      };
-      transcripts: {
-        Row: {
-          id: string;
-          episode_id: string;
-          user_id: string;
-          created_at: string;
-          text: string;
-          segments: Json;
-        };
-        Insert: {
-          id?: string;
-          episode_id: string;
-          user_id: string;
-          created_at?: string;
-          text: string;
-          segments?: Json;
-        };
-        Update: {
-          id?: string;
-          episode_id?: string;
-          user_id?: string;
-          created_at?: string;
-          text?: string;
-          segments?: Json;
-        };
-        Relationships: [];
-      };
-      generations: {
-        Row: {
-          id: string;
-          episode_id: string;
-          user_id: string;
-          created_at: string;
-          format:
-            | "blog"
-            | "tweet_thread"
-            | "linkedin"
-            | "newsletter"
-            | "youtube_desc"
-            | "thumbnail";
-          content: string;
-          status: "ready" | "generating";
-        };
-        Insert: {
-          id?: string;
-          episode_id: string;
-          user_id: string;
-          created_at?: string;
-          format:
-            | "blog"
-            | "tweet_thread"
-            | "linkedin"
-            | "newsletter"
-            | "youtube_desc"
-            | "thumbnail";
-          content: string;
-          status?: "ready" | "generating";
-        };
-        Update: {
-          id?: string;
-          episode_id?: string;
-          user_id?: string;
-          created_at?: string;
-          format?:
-            | "blog"
-            | "tweet_thread"
-            | "linkedin"
-            | "newsletter"
-            | "youtube_desc"
-            | "thumbnail";
-          content?: string;
-          status?: "ready" | "generating";
-        };
-        Relationships: [];
-      };
-      channels: {
-        Row: {
-          id: string;
-          user_id: string;
-          created_at: string;
-          youtube_channel_id: string;
-          title: string;
-          handle: string | null;
-          description: string | null;
-          thumbnail_url: string | null;
-          subscriber_count: number;
-          video_count: number;
-          view_count: number;
-          access_type: "public" | "oauth";
-          analysis: Json | null;
-          analyzed_at: string | null;
-          inspiration: Json | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          created_at?: string;
-          youtube_channel_id: string;
-          title?: string;
-          handle?: string | null;
-          description?: string | null;
-          thumbnail_url?: string | null;
-          subscriber_count?: number;
-          video_count?: number;
-          view_count?: number;
-          access_type?: "public" | "oauth";
-          analysis?: Json | null;
-          analyzed_at?: string | null;
-          inspiration?: Json | null;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          created_at?: string;
-          youtube_channel_id?: string;
-          title?: string;
-          handle?: string | null;
-          description?: string | null;
-          thumbnail_url?: string | null;
-          subscriber_count?: number;
-          video_count?: number;
-          view_count?: number;
-          access_type?: "public" | "oauth";
-          analysis?: Json | null;
-          analyzed_at?: string | null;
-          inspiration?: Json | null;
-        };
-        Relationships: [];
-      };
       channel_videos: {
         Row: {
-          id: string;
-          channel_id: string;
-          user_id: string;
-          created_at: string;
-          youtube_video_id: string;
-          title: string;
-          description: string | null;
-          thumbnail_url: string | null;
-          view_count: number;
-          like_count: number;
-          comment_count: number;
-          duration_seconds: number;
-          published_at: string | null;
-          transcript: Json | null;
-          viral_moments: Json | null;
-        };
+          channel_id: string
+          comment_count: number
+          created_at: string
+          description: string | null
+          duration_seconds: number
+          id: string
+          like_count: number
+          published_at: string | null
+          thumbnail_url: string | null
+          title: string
+          transcript: Json | null
+          user_id: string
+          view_count: number
+          viral_moments: Json | null
+          youtube_video_id: string
+        }
         Insert: {
-          id?: string;
-          channel_id: string;
-          user_id: string;
-          created_at?: string;
-          youtube_video_id: string;
-          title?: string;
-          description?: string | null;
-          thumbnail_url?: string | null;
-          view_count?: number;
-          like_count?: number;
-          comment_count?: number;
-          duration_seconds?: number;
-          published_at?: string | null;
-          transcript?: Json | null;
-          viral_moments?: Json | null;
-        };
+          channel_id: string
+          comment_count?: number
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number
+          id?: string
+          like_count?: number
+          published_at?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          transcript?: Json | null
+          user_id: string
+          view_count?: number
+          viral_moments?: Json | null
+          youtube_video_id: string
+        }
         Update: {
-          id?: string;
-          channel_id?: string;
-          user_id?: string;
-          created_at?: string;
-          youtube_video_id?: string;
-          title?: string;
-          description?: string | null;
-          thumbnail_url?: string | null;
-          view_count?: number;
-          like_count?: number;
-          comment_count?: number;
-          duration_seconds?: number;
-          published_at?: string | null;
-          transcript?: Json | null;
-          viral_moments?: Json | null;
-        };
-        Relationships: [];
-      };
-      trend_digests: {
+          channel_id?: string
+          comment_count?: number
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number
+          id?: string
+          like_count?: number
+          published_at?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          transcript?: Json | null
+          user_id?: string
+          view_count?: number
+          viral_moments?: Json | null
+          youtube_video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_videos_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
         Row: {
-          id: string;
-          niche: string;
-          data: Json;
-          expires_at: string;
-          created_at: string;
-        };
+          access_type: string
+          analysis: Json | null
+          analyzed_at: string | null
+          created_at: string
+          description: string | null
+          handle: string | null
+          id: string
+          inspiration: Json | null
+          subscriber_count: number
+          thumbnail_url: string | null
+          title: string
+          user_id: string
+          video_count: number
+          view_count: number
+          youtube_channel_id: string
+        }
         Insert: {
-          id?: string;
-          niche: string;
-          data: Json;
-          expires_at: string;
-          created_at?: string;
-        };
+          access_type?: string
+          analysis?: Json | null
+          analyzed_at?: string | null
+          created_at?: string
+          description?: string | null
+          handle?: string | null
+          id?: string
+          inspiration?: Json | null
+          subscriber_count?: number
+          thumbnail_url?: string | null
+          title?: string
+          user_id: string
+          video_count?: number
+          view_count?: number
+          youtube_channel_id: string
+        }
         Update: {
-          id?: string;
-          niche?: string;
-          data?: Json;
-          expires_at?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      connected_accounts: {
+          access_type?: string
+          analysis?: Json | null
+          analyzed_at?: string | null
+          created_at?: string
+          description?: string | null
+          handle?: string | null
+          id?: string
+          inspiration?: Json | null
+          subscriber_count?: number
+          thumbnail_url?: string | null
+          title?: string
+          user_id?: string
+          video_count?: number
+          view_count?: number
+          youtube_channel_id?: string
+        }
+        Relationships: []
+      }
+      episodes: {
         Row: {
-          id: string;
-          user_id: string;
-          platform: "tiktok" | "instagram";
-          access_token: string;
-          refresh_token: string | null;
-          expires_at: string | null;
-          platform_user_id: string | null;
-          platform_username: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          description: string | null
+          duration: number
+          generation_count: number
+          guests: string[]
+          id: string
+          status: string
+          thumbnail_url: string | null
+          title: string
+          topics: string[]
+          user_id: string
+          viral_moments: Json | null
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          platform: "tiktok" | "instagram";
-          access_token: string;
-          refresh_token?: string | null;
-          expires_at?: string | null;
-          platform_user_id?: string | null;
-          platform_username?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          description?: string | null
+          duration?: number
+          generation_count?: number
+          guests?: string[]
+          id?: string
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          topics?: string[]
+          user_id: string
+          viral_moments?: Json | null
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          platform?: "tiktok" | "instagram";
-          access_token?: string;
-          refresh_token?: string | null;
-          expires_at?: string | null;
-          platform_user_id?: string | null;
-          platform_username?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-  };
-};
+          created_at?: string
+          description?: string | null
+          duration?: number
+          generation_count?: number
+          guests?: string[]
+          id?: string
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          topics?: string[]
+          user_id?: string
+          viral_moments?: Json | null
+        }
+        Relationships: []
+      }
+      generations: {
+        Row: {
+          content: string
+          created_at: string
+          episode_id: string
+          format: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          episode_id: string
+          format: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          episode_id?: string
+          format?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generations_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          billing_period_start: string
+          created_at: string
+          credits: number
+          episodes_used_this_month: number
+          id: string
+          name: string | null
+          plan: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          billing_period_start?: string
+          created_at?: string
+          credits?: number
+          episodes_used_this_month?: number
+          id: string
+          name?: string | null
+          plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          billing_period_start?: string
+          created_at?: string
+          credits?: number
+          episodes_used_this_month?: number
+          id?: string
+          name?: string | null
+          plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: []
+      }
+      transcripts: {
+        Row: {
+          created_at: string
+          episode_id: string
+          id: string
+          segments: Json
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          episode_id: string
+          id?: string
+          segments?: Json
+          text?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          episode_id?: string
+          id?: string
+          segments?: Json
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: true
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_profiles: {
+        Row: {
+          common_hooks: string[]
+          created_at: string
+          id: string
+          pacing: string[]
+          tone: string[]
+          user_id: string
+          vocabulary: string[]
+        }
+        Insert: {
+          common_hooks?: string[]
+          created_at?: string
+          id?: string
+          pacing?: string[]
+          tone?: string[]
+          user_id: string
+          vocabulary?: string[]
+        }
+        Update: {
+          common_hooks?: string[]
+          created_at?: string
+          id?: string
+          pacing?: string[]
+          tone?: string[]
+          user_id?: string
+          vocabulary?: string[]
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

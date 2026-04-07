@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { GenerationParams } from '@/lib/generation-params';
 import { DEFAULT_PARAMS } from '@/lib/generation-params';
+import { parseJsonBody, sanitizeString } from '@/lib/security/validate';
 
 export const maxDuration = 60;
 
@@ -104,6 +105,48 @@ function buildFormatInstructions(format: string, params: GenerationParams): stri
       ].filter(Boolean).join(" ");
     }
 
+    case "quotes": {
+      return [
+        "Extract 6-8 of the most impactful, quotable, or thought-provoking statements from this transcript.",
+        "Each quote should be standalone (makes sense without context), under 280 characters, and shareable.",
+        "Format each quote as:",
+        "> [Quote text]",
+        "— [Speaker if identifiable, otherwise omit the attribution line]",
+        "Put a blank line between each quote block.",
+      ].join("\n");
+    }
+
+    case "chapters": {
+      const o = (opts.chapters ?? DEFAULT_PARAMS.formatOptions.chapters)!;
+      const countInstruction = o.chapterCount === "auto"
+        ? "Identify between 5 and 10 chapters based on natural topic changes."
+        : `Create exactly ${o.chapterCount} chapters.`;
+      return [
+        "Analyze this podcast transcript and create chapter markers.",
+        countInstruction,
+        "Each chapter marks a distinct topic or segment shift.",
+        "Format each chapter as: MM:SS Title",
+        "Start with 00:00 for the first chapter.",
+        "Use timestamps that reflect the natural flow of topics in the transcript.",
+        o.includeDescriptions ? "Add a one-sentence description after each chapter title." : "",
+        "Output ONLY the chapter list, nothing else.",
+      ].filter(Boolean).join("\n");
+    }
+
+    case "show_notes": {
+      const o = (opts.show_notes ?? DEFAULT_PARAMS.formatOptions.show_notes)!;
+      const sections: string[] = [
+        "Write professional podcast show notes with this structure:",
+        "1. **Episode Summary** — 2-3 sentence overview",
+        "2. **Key Topics** — bullet list of main topics covered",
+      ];
+      if (o.includeGuestBio) sections.push("3. **Guest Info** — name and 1-sentence bio if a guest is mentioned");
+      if (o.includeResources) sections.push(`${o.includeGuestBio ? "4" : "3"}. **Resources Mentioned** — list of books, links, or tools referenced`);
+      if (o.includeTimestamps) sections.push(`${sections.length}. **Timestamps** — 5-8 key moments with approximate times (MM:SS format)`);
+      sections.push(`${sections.length}. **Connect** — placeholder section for social links`);
+      return sections.join("\n");
+    }
+
     default:
       return `Write a ${format} based on the transcript.`;
   }
@@ -117,16 +160,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { format, transcript, voiceProfile, params } = await req.json() as {
+    const { data: body, error: bodyError } = await parseJsonBody(req);
+    if (bodyError) return bodyError;
+
+    const { format, transcript, segments, voiceProfile, params } = body as {
       format: string;
       transcript: string;
+      segments?: { text: string; startTime?: number; start?: number; speaker?: string }[];
       voiceProfile?: { tone: string[]; vocabulary: string[]; pacing: string[]; commonHooks: string[] } | null;
       params?: GenerationParams;
     };
 
-    if (!transcript || !format) {
+    if (!transcript || typeof transcript !== "string" || !format || typeof format !== "string") {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    const safeFormat = sanitizeString(format, 50);
 
     if (process.env.USE_REAL_AI !== 'true' || !process.env.OPENROUTER_API_KEY) {
       return NextResponse.json({
@@ -154,7 +203,18 @@ export async function POST(req: Request) {
       LENGTH_INSTRUCTIONS[p.length] ?? LENGTH_INSTRUCTIONS.standard,
     ].join("\n");
 
-    const formatInstructions = buildFormatInstructions(format, p);
+    const formatInstructions = buildFormatInstructions(safeFormat, p);
+
+    let transcriptContent = `Here is the raw podcast transcript:\n\n${transcript}`;
+    if (format === "chapters" && Array.isArray(segments) && segments.length > 0) {
+      const segmentLines = segments.map(s => {
+        const time = s.startTime ?? s.start ?? 0;
+        const mins = Math.floor(time / 60).toString().padStart(2, "0");
+        const secs = Math.floor(time % 60).toString().padStart(2, "0");
+        return `[${mins}:${secs}] ${s.text}`;
+      }).join("\n");
+      transcriptContent = `Here is the timestamped podcast transcript:\n\n${segmentLines}`;
+    }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -174,7 +234,7 @@ export async function POST(req: Request) {
         route: 'fallback',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `${formatInstructions}\n\nHere is the raw podcast transcript:\n\n${transcript}` },
+          { role: 'user', content: `${formatInstructions}\n\n${transcriptContent}` },
         ],
         temperature: 0.7,
         max_tokens: p.length === "brief" ? 1200 : p.length === "detailed" ? 3500 : 2000,
@@ -190,7 +250,7 @@ export async function POST(req: Request) {
     const data = await response.json();
     const text: string = data.choices?.[0]?.message?.content ?? "";
 
-    return NextResponse.json({ content: text, format, status: 'completed' });
+    return NextResponse.json({ content: text, format: safeFormat, status: 'completed' });
 
   } catch (error: unknown) {
     console.error("AI Generation Error:", error);

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { ChannelDashboard } from "@/components/channel/ChannelDashboard"
-import { Loader2 } from "lucide-react"
+import { ChannelDashboardSkeleton } from "@/components/skeletons"
 
 export default function ChannelPage() {
   const { channelId } = useParams<{ channelId: string }>()
@@ -27,11 +27,7 @@ export default function ChannelPage() {
   }, [channelId])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <ChannelDashboardSkeleton />
   }
 
   if (!channel) {

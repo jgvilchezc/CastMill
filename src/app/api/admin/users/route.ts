@@ -27,9 +27,10 @@ export async function GET(req: NextRequest) {
     if (u.email) emailMap[u.id] = u.email;
   });
 
-  let query = admin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (admin as any)
     .from("profiles")
-    .select("id, name, plan, credits, episodes_used_this_month, billing_period_start, created_at, lemon_squeezy_subscription_id", { count: "exact" });
+    .select("id, name, plan, credits, episodes_used_this_month, billing_period_start, created_at, stripe_subscription_id", { count: "exact" });
 
   if (plan && plan !== "all") {
     query = query.eq("plan", plan as "free" | "starter" | "pro");
@@ -41,7 +42,8 @@ export async function GET(req: NextRequest) {
 
   const { data: profiles, count } = await query;
 
-  let results = (profiles ?? []).map((p) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let results = ((profiles ?? []) as any[]).map((p) => ({
     ...p,
     email: emailMap[p.id] ?? null,
   }));
@@ -49,7 +51,7 @@ export async function GET(req: NextRequest) {
   if (search) {
     const lower = search.toLowerCase();
     results = results.filter(
-      (u) =>
+      (u: { email?: string | null; name?: string | null }) =>
         u.email?.toLowerCase().includes(lower) ||
         u.name?.toLowerCase().includes(lower)
     );

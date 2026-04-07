@@ -34,8 +34,8 @@ async function getStats() {
 
   const planDistribution = { free: 0, starter: 0, pro: 0 };
   (planCounts ?? []).forEach((p) => {
-    const plan = p.plan as PlanId;
-    if (plan in planDistribution) planDistribution[plan]++;
+    if (p.plan in planDistribution)
+      (planDistribution as Record<string, number>)[p.plan]++;
   });
 
   const estimatedRevenue =
@@ -127,7 +127,9 @@ export default async function AdminDashboard() {
           </h2>
           <div className="space-y-3">
             {(["free", "starter", "pro"] as PlanId[]).map((plan) => {
-              const count = stats.planDistribution[plan];
+              const count = (stats.planDistribution as Record<string, number>)[
+                plan
+              ];
               const pct = Math.round((count / total) * 100);
               return (
                 <div key={plan}>
@@ -154,7 +156,7 @@ export default async function AdminDashboard() {
             {(["free", "starter", "pro"] as PlanId[]).map((plan) => (
               <div key={plan}>
                 <p className={`text-lg font-bold tabular-nums ${PLAN_COLORS[plan]}`}>
-                  {stats.planDistribution[plan]}
+                  {(stats.planDistribution as Record<string, number>)[plan]}
                 </p>
                 <p className="text-[10px] text-[#555] capitalize">{plan}</p>
               </div>

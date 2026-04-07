@@ -15,14 +15,16 @@ import { GenerateAllButton } from "@/components/content/GenerateAllButton"
 import { ClipsHub } from "@/components/clips/ClipsHub"
 import { useEpisodes } from "@/lib/context/episode-context"
 import type { ViralMoment } from "@/components/clips/MomentCard"
+import { EpisodeDetailSkeleton } from "@/components/skeletons"
 
 export default function EpisodePage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
-  const { episodes, transcripts, generations, selectEpisode, refreshEpisode, deleteEpisode } = useEpisodes()
+  const { episodes, transcripts, generations, selectEpisode, refreshEpisode, deleteEpisode, isLoadingEpisodes } = useEpisodes()
   const [isGeneratingAll, setIsGeneratingAll] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRefreshingTranscript, setIsRefreshingTranscript] = useState(true)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -36,13 +38,18 @@ export default function EpisodePage() {
 
   useEffect(() => {
     selectEpisode(id)
-    refreshEpisode(id)
+    setIsRefreshingTranscript(true)
+    refreshEpisode(id).finally(() => setIsRefreshingTranscript(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const episode = episodes.find((e) => e.id === id)
   const transcript = transcripts[id]
   const episodeGenerations = generations.filter((g) => g.episodeId === id)
+
+  if (isLoadingEpisodes) {
+    return <EpisodeDetailSkeleton />
+  }
 
   if (!episode) {
     return (
@@ -180,7 +187,7 @@ export default function EpisodePage() {
         </div>
 
         <TabsContent value="transcript">
-          <TranscriptView transcript={transcript} />
+          <TranscriptView transcript={transcript} episodeId={id} isLoading={isRefreshingTranscript} />
         </TabsContent>
 
         <TabsContent value="content" forceMount className="data-[state=inactive]:hidden">

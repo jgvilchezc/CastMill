@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { VideoHub } from "@/components/channel/VideoHub"
-import { Loader2 } from "lucide-react"
+import { VideoDetailSkeleton } from "@/components/skeletons"
 
 export default function VideoPage() {
   const { channelId, videoId } = useParams<{ channelId: string; videoId: string }>()
@@ -27,11 +27,7 @@ export default function VideoPage() {
   }, [channelId, videoId])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <VideoDetailSkeleton />
   }
 
   if (!video) {

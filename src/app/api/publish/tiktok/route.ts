@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeString } from "@/lib/security/validate";
 
 export const maxDuration = 60;
 
@@ -24,7 +25,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: account } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: account } = await (supabase as any)
     .from("connected_accounts")
     .select("access_token, expires_at")
     .eq("user_id", user.id)
@@ -45,12 +47,22 @@ export async function POST(req: Request) {
     );
   }
 
+  const contentLength = req.headers.get("content-length");
+  const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // 100 MB
+  if (contentLength && parseInt(contentLength, 10) > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: "Upload too large (max 100MB)" }, { status: 413 });
+  }
+
   const formData = await req.formData();
   const videoFile = formData.get("video") as File | null;
-  const caption = (formData.get("caption") as string) ?? "";
+  const caption = sanitizeString((formData.get("caption") as string) ?? "", 2200);
 
   if (!videoFile) {
     return NextResponse.json({ error: "video file is required" }, { status: 400 });
+  }
+
+  if (videoFile.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: "Video file too large (max 100MB)" }, { status: 413 });
   }
 
   const initRes = await fetch(

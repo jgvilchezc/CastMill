@@ -203,7 +203,8 @@ export async function GET(req: Request) {
   const topics = rawTopics ? rawTopics.split(",").map((t) => t.trim()) : [];
   const niche = matchNiche(topics);
 
-  const { data: cached } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: cached } = await (supabase as any)
     .from("trend_digests")
     .select("data, expires_at")
     .eq("niche", niche)
@@ -257,7 +258,8 @@ export async function GET(req: Request) {
     Date.now() + 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
     .from("trend_digests")
     .upsert(
       { niche, data: JSON.parse(JSON.stringify(digest)), expires_at: expiresAt },

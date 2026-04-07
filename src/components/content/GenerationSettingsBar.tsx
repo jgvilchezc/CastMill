@@ -261,6 +261,79 @@ function FormatSpecificOptions({
     )
   }
 
+  if (format === "chapters") {
+    const opts = getFormatOptions(params, "chapters")
+    const countOptions = [
+      { value: "auto", label: "Auto" },
+      { value: "5",    label: "5 chapters" },
+      { value: "7",    label: "7 chapters" },
+      { value: "10",   label: "10 chapters" },
+    ] as const
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex items-baseline gap-1 group outline-none">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+              chapters
+            </span>
+            <Settings2 className="h-2.5 w-2.5 text-muted-foreground/40 group-hover:text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Chapter options</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuRadioGroup
+            value={opts.chapterCount}
+            onValueChange={(v) => patchFormat<"chapters">("chapterCount", v)}
+          >
+            {countOptions.map((o) => (
+              <DropdownMenuRadioItem key={o.value} value={o.value} className="text-xs font-mono">{o.label}</DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <div className="px-2 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="ch-desc" className="text-xs font-normal cursor-pointer">Descriptions</Label>
+              <Switch id="ch-desc" checked={opts.includeDescriptions} onCheckedChange={(v) => patchFormat<"chapters">("includeDescriptions", v)} />
+            </div>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
+  if (format === "show_notes") {
+    const opts = getFormatOptions(params, "show_notes")
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex items-baseline gap-1 group outline-none">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+              show notes
+            </span>
+            <Settings2 className="h-2.5 w-2.5 text-muted-foreground/40 group-hover:text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52">
+          <DropdownMenuLabel className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Show Notes options</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <div className="px-2 py-2 space-y-3">
+            {([
+              ["includeGuestBio",   "Guest bio"],
+              ["includeResources",  "Resources mentioned"],
+              ["includeTimestamps", "Timestamps"],
+            ] as [keyof ReturnType<typeof getFormatOptions<"show_notes">>, string][]).map(([key, lbl]) => (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <Label htmlFor={`sn-${key}`} className="text-xs font-normal cursor-pointer">{lbl}</Label>
+                <Switch id={`sn-${key}`} checked={opts[key]} onCheckedChange={(v) => patchFormat<"show_notes">(key, v)} />
+              </div>
+            ))}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
   return null
 }
 

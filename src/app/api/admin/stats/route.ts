@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, createAdminClient } from "@/lib/supabase/admin";
 import { PLANS } from "@/lib/plans";
-import type { PlanId } from "@/lib/plans";
 
 export async function GET() {
   try {
@@ -35,8 +34,8 @@ export async function GET() {
 
   const planDistribution = { free: 0, starter: 0, pro: 0 };
   (planCounts ?? []).forEach((p) => {
-    const plan = p.plan as PlanId;
-    if (plan in planDistribution) planDistribution[plan]++;
+    if (p.plan in planDistribution)
+      (planDistribution as Record<string, number>)[p.plan]++;
   });
 
   const estimatedRevenue =

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isValidUUID } from "@/lib/security/validate";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -17,8 +18,17 @@ export async function GET(req: Request) {
   try {
     const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
     userId = decoded.userId;
+    if (!isValidUUID(userId)) {
+      return NextResponse.redirect(`${appUrl}/settings?error=tiktok_invalid_state`);
+    }
   } catch {
     return NextResponse.redirect(`${appUrl}/settings?error=tiktok_invalid_state`);
+  }
+
+  const supabaseCheck = await createClient();
+  const { data: { user: sessionUser } } = await supabaseCheck.auth.getUser();
+  if (!sessionUser || sessionUser.id !== userId) {
+    return NextResponse.redirect(`${appUrl}/settings?error=tiktok_session_mismatch`);
   }
 
   const redirectUri = `${appUrl}/api/auth/tiktok/callback`;
@@ -58,7 +68,8 @@ export async function GET(req: Request) {
   }
 
   const supabase = await createClient();
-  await supabase.from("connected_accounts").upsert(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("connected_accounts").upsert(
     {
       user_id: userId,
       platform: "tiktok",

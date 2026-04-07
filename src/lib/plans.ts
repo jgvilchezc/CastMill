@@ -8,7 +8,10 @@ export type ContentFormat =
   | "linkedin"
   | "newsletter"
   | "youtube_desc"
-  | "thumbnail";
+  | "thumbnail"
+  | "chapters"
+  | "quotes"
+  | "show_notes";
 
 export interface PlanConfig {
   name: string;
@@ -30,7 +33,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   free: {
     name: "Free",
     episodesPerMonth: 2,
-    formats: ["blog", "tweet_thread", "linkedin"],
+    formats: ["blog", "tweet_thread", "linkedin", "chapters", "quotes"],
     channelLimit: 1,
     channelOptimizer: false,
     viralMoments: false,
@@ -52,6 +55,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       "newsletter",
       "youtube_desc",
       "thumbnail",
+      "chapters",
+      "quotes",
+      "show_notes",
     ],
     channelLimit: 2,
     channelOptimizer: false,
@@ -74,6 +80,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       "newsletter",
       "youtube_desc",
       "thumbnail",
+      "chapters",
+      "quotes",
+      "show_notes",
     ],
     channelLimit: 5,
     channelOptimizer: true,
@@ -95,6 +104,9 @@ export const ALL_FORMATS: ContentFormat[] = [
   "newsletter",
   "youtube_desc",
   "thumbnail",
+  "chapters",
+  "quotes",
+  "show_notes",
 ];
 
 export function getPlan(plan: PlanId): PlanConfig {

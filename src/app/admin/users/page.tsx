@@ -13,7 +13,7 @@ interface UserRow {
   credits: number;
   episodes_used_this_month: number;
   created_at: string;
-  lemon_squeezy_subscription_id: string | null;
+  stripe_subscription_id: string | null;
 }
 
 const PLAN_COLORS: Record<PlanId, string> = {
@@ -172,7 +172,7 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {user.lemon_squeezy_subscription_id ? (
+                    {user.stripe_subscription_id ? (
                       <span className="text-emerald-500 text-[10px]">✓ active</span>
                     ) : (
                       <span className="text-[#444] text-[10px]">—</span>
