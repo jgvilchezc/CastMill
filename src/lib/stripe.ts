@@ -1,7 +1,20 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+let _stripe: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error(
+        "STRIPE_SECRET_KEY is not set. Make sure it is available as an environment variable."
+      );
+    }
+    _stripe = new Stripe(key);
+  }
+  return _stripe;
+}
 
 type PlanId = "starter" | "pro";
 type Interval = "monthly" | "annual";
@@ -55,7 +68,7 @@ async function getOrCreateCustomer(
     return profile.stripe_customer_id;
   }
 
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     email,
     name: name ?? undefined,
     metadata: { user_id: userId },
@@ -86,7 +99,7 @@ export async function createCheckoutSession({
   const priceId = getPriceId(plan, interval);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
@@ -110,7 +123,7 @@ export async function createCustomerPortalSession(
 ): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripe().billingPortal.sessions.create({
     customer: customerId,
     return_url: `${appUrl}/settings`,
   });
