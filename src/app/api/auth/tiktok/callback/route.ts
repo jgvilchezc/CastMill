@@ -57,14 +57,38 @@ export async function GET(req: Request) {
     open_id: platformUserId,
   } = tokenData;
 
-  const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=display_name,username", {
-    headers: { Authorization: `Bearer ${access_token}` },
-  });
+  const profileFields = "bio_description,is_verified,profile_deep_link,profile_web_link";
+  const statsFields = "follower_count,following_count,likes_count,video_count";
+
+  const [profileRes, statsRes] = await Promise.all([
+    fetch(`https://open.tiktokapis.com/v2/user/info/?fields=${profileFields}`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    }),
+    fetch(`https://open.tiktokapis.com/v2/user/info/?fields=${statsFields}`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    }),
+  ]);
 
   let platformUsername: string | null = null;
-  if (userRes.ok) {
-    const userData = await userRes.json();
-    platformUsername = userData?.data?.user?.username ?? userData?.data?.user?.display_name ?? null;
+  let platformMeta: Record<string, unknown> = {};
+
+  if (profileRes.ok) {
+    const profileData = await profileRes.json();
+    const u = profileData?.data?.user ?? {};
+    platformUsername = u.profile_deep_link?.split("@")?.[1] ?? null;
+    platformMeta = { ...platformMeta, bio: u.bio_description, is_verified: u.is_verified };
+  }
+
+  if (statsRes.ok) {
+    const statsData = await statsRes.json();
+    const s = statsData?.data?.user ?? {};
+    platformMeta = {
+      ...platformMeta,
+      follower_count: s.follower_count,
+      following_count: s.following_count,
+      likes_count: s.likes_count,
+      video_count: s.video_count,
+    };
   }
 
   const supabase = await createClient();
@@ -80,6 +104,7 @@ export async function GET(req: Request) {
         : null,
       platform_user_id: platformUserId ?? null,
       platform_username: platformUsername,
+      platform_meta: platformMeta,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,platform" }

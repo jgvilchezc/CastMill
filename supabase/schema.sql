@@ -225,6 +225,7 @@ create table if not exists public.connected_accounts (
   expires_at          timestamptz,
   platform_user_id    text,
   platform_username   text,
+  platform_meta       jsonb default '{}'::jsonb,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   unique (user_id, platform)
