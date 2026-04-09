@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isValidUUID } from "@/lib/security/validate";
+import { cookies } from "next/headers";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -12,6 +13,14 @@ export async function GET(req: Request) {
 
   if (error || !code || !state) {
     return NextResponse.redirect(`${appUrl}/settings?error=tiktok_oauth_failed`);
+  }
+
+  const cookieStore = await cookies();
+  const codeVerifier = cookieStore.get("tiktok_code_verifier")?.value;
+  cookieStore.delete("tiktok_code_verifier");
+
+  if (!codeVerifier) {
+    return NextResponse.redirect(`${appUrl}/settings?error=tiktok_missing_verifier`);
   }
 
   let userId: string;
@@ -42,6 +51,7 @@ export async function GET(req: Request) {
       code,
       grant_type: "authorization_code",
       redirect_uri: redirectUri,
+      code_verifier: codeVerifier,
     }),
   });
 
