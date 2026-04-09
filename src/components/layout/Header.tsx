@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ThemeToggle"
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/upload": "New Episode",
+  "/tiktok": "TikTok Analytics",
 }
 
 interface HeaderProps {

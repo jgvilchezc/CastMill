@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Upload, Brain, Settings, LogOut, ChevronUp, Youtube, Sparkles } from "lucide-react"
+import { LayoutDashboard, Upload, Brain, Settings, LogOut, ChevronUp, Youtube, Sparkles, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/lib/context/user-context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -21,6 +21,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "New Episode", icon: Upload, href: "/upload" },
   { label: "Channel Optimizer", icon: Youtube, href: "/channel" },
+  { label: "TikTok Analytics", icon: BarChart3, href: "/tiktok", proOnly: true },
   { label: "Memory", icon: Brain, href: "/memory", disabled: true },
   { label: "Settings", icon: Settings, href: "/settings" },
 ]
@@ -52,7 +53,8 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 space-y-1 p-3">
         {navItems.map((item) => {
-          const isActive = pathname === item.href
+          if (item.proOnly && user?.plan !== "pro") return null
+          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
           return (
             <div key={item.href}>
               {item.disabled ? (

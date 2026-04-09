@@ -12,6 +12,7 @@ import {
   CreditCard,
   Zap,
   Rss,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -388,20 +389,30 @@ export default function SettingsPage() {
                 </div>
 
                 {account && !expired ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive shrink-0"
-                    onClick={() => disconnect(platform)}
-                    disabled={disconnecting === platform}
-                  >
-                    {disconnecting === platform ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Link2Off className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {platform === "tiktok" && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="/tiktok">
+                          <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+                          Analytics
+                        </a>
+                      </Button>
                     )}
-                    <span className="ml-1.5">Disconnect</span>
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => disconnect(platform)}
+                      disabled={disconnecting === platform}
+                    >
+                      {disconnecting === platform ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Link2Off className="h-3.5 w-3.5" />
+                      )}
+                      <span className="ml-1.5">Disconnect</span>
+                    </Button>
+                  </div>
                 ) : (
                   <Button
                     size="sm"

@@ -33,7 +33,7 @@ export async function GET() {
 
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/tiktok/callback`;
   const state = Buffer.from(JSON.stringify({ userId: user.id })).toString("base64url");
-  const scope = "user.info.profile,user.info.stats,video.list,video.upload";
+  const scope = "user.info.basic,user.info.profile,user.info.stats,video.list,video.upload";
 
   const url = new URL("https://www.tiktok.com/v2/auth/authorize/");
   url.searchParams.set("client_key", clientKey);

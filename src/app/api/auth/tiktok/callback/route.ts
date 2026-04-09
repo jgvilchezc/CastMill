@@ -67,10 +67,14 @@ export async function GET(req: Request) {
     open_id: platformUserId,
   } = tokenData;
 
-  const profileFields = "bio_description,is_verified,profile_deep_link,profile_web_link";
+  const basicFields = "display_name,avatar_url,avatar_large_url";
+  const profileFields = "bio_description,is_verified,profile_deep_link";
   const statsFields = "follower_count,following_count,likes_count,video_count";
 
-  const [profileRes, statsRes] = await Promise.all([
+  const [basicRes, profileRes, statsRes] = await Promise.all([
+    fetch(`https://open.tiktokapis.com/v2/user/info/?fields=${basicFields}`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    }),
     fetch(`https://open.tiktokapis.com/v2/user/info/?fields=${profileFields}`, {
       headers: { Authorization: `Bearer ${access_token}` },
     }),
@@ -82,10 +86,25 @@ export async function GET(req: Request) {
   let platformUsername: string | null = null;
   let platformMeta: Record<string, unknown> = {};
 
+  if (basicRes.ok) {
+    const basicData = await basicRes.json();
+    const b = basicData?.data?.user ?? {};
+    platformUsername = b.display_name ?? null;
+    platformMeta = {
+      ...platformMeta,
+      display_name: b.display_name,
+      avatar_url: b.avatar_large_url ?? b.avatar_url,
+    };
+  }
+
   if (profileRes.ok) {
     const profileData = await profileRes.json();
     const u = profileData?.data?.user ?? {};
-    platformUsername = u.profile_deep_link?.split("@")?.[1] ?? null;
+    const deepLink: string = u.profile_deep_link ?? "";
+    const usernameFromLink = deepLink.includes("@")
+      ? deepLink.split("@").pop()?.split("?")[0] ?? null
+      : null;
+    if (usernameFromLink) platformUsername = usernameFromLink;
     platformMeta = { ...platformMeta, bio: u.bio_description, is_verified: u.is_verified };
   }
 
