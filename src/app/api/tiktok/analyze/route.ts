@@ -78,17 +78,28 @@ export async function POST(req: Request) {
     )
     .join("\n");
 
-  const { object } = await generateObject({
-    model: google("gemini-2.0-flash"),
-    system:
-      "You are an expert TikTok content strategist and social media analyst. " +
-      "Analyze the creator's video data and provide actionable insights to help them grow. " +
-      "Be specific, data-driven, and practical. Reference actual video titles when relevant.",
-    prompt:
-      `Analyze these TikTok videos and provide content strategy insights:\n\n${videoSummary}\n\n` +
-      "Identify content themes, what performs best, caption patterns, and suggest new content ideas.",
-    schema: insightsSchema,
-  });
+  try {
+    const { object } = await generateObject({
+      model: google("gemini-2.0-flash"),
+      system:
+        "You are an expert TikTok content strategist and social media analyst. " +
+        "Analyze the creator's video data and provide actionable insights to help them grow. " +
+        "Be specific, data-driven, and practical. Reference actual video titles when relevant.",
+      prompt:
+        `Analyze these TikTok videos and provide content strategy insights:\n\n${videoSummary}\n\n` +
+        "Identify content themes, what performs best, caption patterns, and suggest new content ideas.",
+      schema: insightsSchema,
+    });
 
-  return NextResponse.json({ insights: object });
+    return NextResponse.json({ insights: object });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[tiktok/analyze] AI generation failed:", message);
+
+    const isQuota = message.includes("quota") || message.includes("429") || message.includes("RESOURCE_EXHAUSTED");
+    return NextResponse.json(
+      { error: isQuota ? "AI quota exceeded. Please try again later or check your Google AI API key." : `AI analysis failed: ${message}` },
+      { status: isQuota ? 429 : 500 }
+    );
+  }
 }
