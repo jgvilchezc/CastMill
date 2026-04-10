@@ -19,7 +19,7 @@ export async function GET() {
 
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`;
   const state = Buffer.from(JSON.stringify({ userId: user.id })).toString("base64url");
-  const scope = "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement";
+  const scope = "instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_manage_metadata";
 
   const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
   url.searchParams.set("client_id", appId);
