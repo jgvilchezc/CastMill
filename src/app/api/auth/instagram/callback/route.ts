@@ -33,57 +33,86 @@ export async function GET(req: Request) {
 
   const redirectUri = `${appUrl}/api/auth/instagram/callback`;
 
-  const tokenRes = await fetch("https://api.instagram.com/oauth/access_token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
+  const tokenRes = await fetch(
+    `https://graph.facebook.com/v21.0/oauth/access_token?` +
+    new URLSearchParams({
       client_id: process.env.INSTAGRAM_APP_ID ?? "",
       client_secret: process.env.INSTAGRAM_APP_SECRET ?? "",
-      grant_type: "authorization_code",
       redirect_uri: redirectUri,
       code,
-    }),
-  });
+    })
+  );
 
   if (!tokenRes.ok) {
+    const errBody = await tokenRes.text();
+    console.error("Facebook token exchange failed:", errBody);
     return NextResponse.redirect(`${appUrl}/settings?error=instagram_token_failed`);
   }
 
   const tokenData = await tokenRes.json();
-  const { access_token, user_id: platformUserId } = tokenData;
+  const shortToken = tokenData.access_token;
 
   const longRes = await fetch(
-    `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.INSTAGRAM_APP_SECRET}&access_token=${access_token}`
+    `https://graph.facebook.com/v21.0/oauth/access_token?` +
+    new URLSearchParams({
+      grant_type: "fb_exchange_token",
+      client_id: process.env.INSTAGRAM_APP_ID ?? "",
+      client_secret: process.env.INSTAGRAM_APP_SECRET ?? "",
+      fb_exchange_token: shortToken,
+    })
   );
 
-  let finalToken = access_token;
+  let finalToken = shortToken;
   let expiresAt: string | null = null;
   if (longRes.ok) {
     const longData = await longRes.json();
-    finalToken = longData.access_token ?? access_token;
+    finalToken = longData.access_token ?? shortToken;
     if (longData.expires_in) {
       expiresAt = new Date(Date.now() + longData.expires_in * 1000).toISOString();
     }
   }
 
-  const meFields = "username,name,profile_picture_url,followers_count,follows_count,media_count,biography";
-  const meRes = await fetch(
-    `https://graph.instagram.com/v21.0/me?fields=${meFields}&access_token=${finalToken}`
+  const pagesRes = await fetch(
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,instagram_business_account&access_token=${finalToken}`
+  );
+
+  let igAccountId: string | null = null;
+  let pageName: string | null = null;
+  if (pagesRes.ok) {
+    const pagesData = await pagesRes.json();
+    const pageWithIg = pagesData.data?.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (p: any) => p.instagram_business_account?.id
+    );
+    if (pageWithIg) {
+      igAccountId = pageWithIg.instagram_business_account.id;
+      pageName = pageWithIg.name;
+    }
+  }
+
+  if (!igAccountId) {
+    return NextResponse.redirect(`${appUrl}/settings?error=instagram_no_business_account`);
+  }
+
+  const igFields = "username,name,profile_picture_url,followers_count,follows_count,media_count,biography";
+  const igRes = await fetch(
+    `https://graph.facebook.com/v21.0/${igAccountId}?fields=${igFields}&access_token=${finalToken}`
   );
 
   let platformUsername: string | null = null;
   let platformMeta: Record<string, unknown> = {};
 
-  if (meRes.ok) {
-    const meData = await meRes.json();
-    platformUsername = meData.username ?? null;
+  if (igRes.ok) {
+    const igData = await igRes.json();
+    platformUsername = igData.username ?? null;
     platformMeta = {
-      display_name: meData.name,
-      avatar_url: meData.profile_picture_url,
-      bio: meData.biography,
-      follower_count: meData.followers_count,
-      following_count: meData.follows_count,
-      media_count: meData.media_count,
+      display_name: igData.name,
+      avatar_url: igData.profile_picture_url,
+      bio: igData.biography,
+      follower_count: igData.followers_count,
+      following_count: igData.follows_count,
+      media_count: igData.media_count,
+      facebook_page_name: pageName,
     };
   }
 
@@ -96,7 +125,7 @@ export async function GET(req: Request) {
       access_token: finalToken,
       refresh_token: null,
       expires_at: expiresAt,
-      platform_user_id: String(platformUserId),
+      platform_user_id: igAccountId,
       platform_username: platformUsername,
       platform_meta: platformMeta,
       updated_at: new Date().toISOString(),
