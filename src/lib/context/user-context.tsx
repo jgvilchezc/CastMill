@@ -106,6 +106,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           .maybeSingle(),
       ]);
 
+      if (profile && !profile.name) {
+        const authName = supabaseUser.user_metadata?.full_name ?? null;
+        const authAvatar = supabaseUser.user_metadata?.avatar_url ?? null;
+        const patches: Record<string, unknown> = {};
+        if (authName) patches.name = authName;
+        if (authAvatar) patches.avatar_url = authAvatar;
+        if (profile.credits === 0) patches.credits = 10;
+        if (Object.keys(patches).length > 0) {
+          await supabase
+            .from("profiles")
+            .update(patches)
+            .eq("id", supabaseUser.id);
+          Object.assign(profile, patches);
+        }
+      }
+
       setUser(mapProfileToUser(supabaseUser, profile));
       setVoiceProfile(vp ?? null);
       setIsLoading(false);

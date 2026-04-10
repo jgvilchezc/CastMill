@@ -103,9 +103,25 @@ export async function POST(req: NextRequest) {
         }
       } else {
         console.warn("[webhook/stripe] No profile row found, inserting:", userId);
+
+        let customerName: string | null = null;
+        if (customerId) {
+          try {
+            const customer = await getStripe().customers.retrieve(customerId);
+            if (!customer.deleted) {
+              customerName = customer.name ?? null;
+            }
+          } catch { /* ignore */ }
+        }
+
         const { error: insertError } = await supabase
           .from("profiles")
-          .insert({ id: userId, ...profileData });
+          .insert({
+            id: userId,
+            name: customerName,
+            credits: 10,
+            ...profileData,
+          });
 
         if (insertError) {
           console.error("[webhook/stripe] Profile insert FAILED:", insertError);
