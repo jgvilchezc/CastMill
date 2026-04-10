@@ -66,13 +66,25 @@ export async function GET(req: Request) {
     }
   }
 
+  const meFields = "username,name,profile_picture_url,followers_count,follows_count,media_count,biography";
   const meRes = await fetch(
-    `https://graph.instagram.com/${platformUserId}?fields=username&access_token=${finalToken}`
+    `https://graph.instagram.com/v21.0/me?fields=${meFields}&access_token=${finalToken}`
   );
+
   let platformUsername: string | null = null;
+  let platformMeta: Record<string, unknown> = {};
+
   if (meRes.ok) {
     const meData = await meRes.json();
     platformUsername = meData.username ?? null;
+    platformMeta = {
+      display_name: meData.name,
+      avatar_url: meData.profile_picture_url,
+      bio: meData.biography,
+      follower_count: meData.followers_count,
+      following_count: meData.follows_count,
+      media_count: meData.media_count,
+    };
   }
 
   const supabase = await createClient();
@@ -86,6 +98,7 @@ export async function GET(req: Request) {
       expires_at: expiresAt,
       platform_user_id: String(platformUserId),
       platform_username: platformUsername,
+      platform_meta: platformMeta,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,platform" }
