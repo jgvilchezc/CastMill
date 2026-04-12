@@ -14,16 +14,19 @@ create table if not exists public.rag_documents (
   source_id  text not null,
   content    text not null,
   metadata   jsonb not null default '{}'::jsonb,
-  embedding  vector(768) not null,
+  embedding  vector(3072) not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, source, source_id)
 );
 
--- HNSW index for fast approximate nearest-neighbor search
-create index if not exists rag_documents_embedding_idx
-  on public.rag_documents
-  using hnsw (embedding vector_cosine_ops);
+-- Note: no vector index created here — HNSW only supports up to 2000 dims
+-- and IVFFlat requires existing rows to build lists. For small datasets the
+-- exact scan via ORDER BY <=> is fast enough. Add an IVFFlat index later once
+-- the table has enough rows:
+--   CREATE INDEX rag_documents_embedding_idx
+--     ON public.rag_documents USING ivfflat (embedding vector_cosine_ops)
+--     WITH (lists = 100);
 
 create index if not exists rag_documents_user_id_idx
   on public.rag_documents (user_id);
@@ -36,7 +39,7 @@ create policy "Users can manage own rag documents"
 
 -- Similarity search function: returns top-K documents for a user
 create or replace function public.match_documents(
-  query_embedding vector(768),
+  query_embedding vector(3072),
   filter_user_id  uuid,
   match_count     int default 10
 )
@@ -49,7 +52,7 @@ returns table (
   similarity float
 )
 language plpgsql
-security definer set search_path = public
+security definer set search_path = public, extensions
 as $$
 begin
   return query
