@@ -9,6 +9,8 @@ const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/upload": "New Episode",
   "/tiktok": "TikTok Analytics",
+  "/instagram": "Instagram Analytics",
+  "/chat": "AI Chat",
 }
 
 interface HeaderProps {

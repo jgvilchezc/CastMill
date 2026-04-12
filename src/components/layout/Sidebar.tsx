@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Upload, Brain, Settings, LogOut, ChevronUp, Youtube, Sparkles, BarChart3 } from "lucide-react"
+import { LayoutDashboard, Upload, Brain, Settings, LogOut, ChevronUp, Youtube, Sparkles, BarChart3, Instagram, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/lib/context/user-context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -22,6 +22,8 @@ const navItems = [
   { label: "New Episode", icon: Upload, href: "/upload" },
   { label: "Channel Optimizer", icon: Youtube, href: "/channel" },
   { label: "TikTok Analytics", icon: BarChart3, href: "/tiktok", proOnly: true },
+  { label: "Instagram Analytics", icon: Instagram, href: "/instagram", proOnly: true },
+  { label: "AI Chat", icon: MessageSquare, href: "/chat", proOnly: true },
   { label: "Memory", icon: Brain, href: "/memory", disabled: true },
   { label: "Settings", icon: Settings, href: "/settings" },
 ]

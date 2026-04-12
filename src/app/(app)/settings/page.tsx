@@ -390,9 +390,9 @@ export default function SettingsPage() {
 
                 {account && !expired ? (
                   <div className="flex items-center gap-2 shrink-0">
-                    {platform === "tiktok" && (
+                    {(platform === "tiktok" || platform === "instagram") && (
                       <Button variant="outline" size="sm" asChild>
-                        <a href="/tiktok">
+                        <a href={platform === "tiktok" ? "/tiktok" : "/instagram"}>
                           <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
                           Analytics
                         </a>
