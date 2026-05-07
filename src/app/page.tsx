@@ -15,6 +15,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -160,24 +161,25 @@ export default function LandingPage() {
             Expandcast
           </span>
         </div>
-        <div className="flex items-center gap-4 mix-blend-difference">
+        <div className="flex items-center gap-2 sm:gap-4 mix-blend-difference">
+          <PWAInstallButton />
           <Button
             variant="ghost"
             asChild
-            className="font-medium hover:text-primary transition-colors text-white hover:bg-white/10"
+            className="hidden sm:flex font-medium hover:text-primary transition-colors text-white hover:bg-white/10"
           >
             <Link href="/pricing">Pricing</Link>
           </Button>
           <Button
             variant="ghost"
             asChild
-            className="font-medium hover:text-primary transition-colors text-white hover:bg-white/10"
+            className="hidden sm:flex font-medium hover:text-primary transition-colors text-white hover:bg-white/10"
           >
             <Link href="/login">Log in</Link>
           </Button>
           <Button
             asChild
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-none px-6"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold rounded-none px-4 sm:px-6 text-sm sm:text-base"
           >
             <Link href="/register">Start Free</Link>
           </Button>
