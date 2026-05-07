@@ -39,6 +39,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Expandcast" }],
   creator: "Expandcast",
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    apple: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: "/logo.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",

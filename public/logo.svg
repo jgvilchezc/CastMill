@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <filter id="glow-green" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-purple" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Purple branches left -->
+  <g filter="url(#glow-purple)" stroke="#a855f7" stroke-width="3.5" stroke-linecap="round">
+    <line x1="50" y1="52" x2="18" y2="22"/>
+    <line x1="50" y1="52" x2="26" y2="16"/>
+    <line x1="50" y1="52" x2="36" y2="14"/>
+  </g>
+
+  <!-- Purple branches right -->
+  <g filter="url(#glow-purple)" stroke="#a855f7" stroke-width="3.5" stroke-linecap="round">
+    <line x1="50" y1="52" x2="82" y2="22"/>
+    <line x1="50" y1="52" x2="74" y2="16"/>
+    <line x1="50" y1="52" x2="64" y2="14"/>
+  </g>
+
+  <!-- Green stem -->
+  <g filter="url(#glow-green)" stroke="#84cc16" stroke-width="3.5" stroke-linecap="round">
+    <line x1="50" y1="54" x2="50" y2="86"/>
+  </g>
+
+  <!-- Center hub -->
+  <circle cx="50" cy="52" r="5" fill="#84cc16" filter="url(#glow-green)"/>
+</svg>
