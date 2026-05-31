@@ -25,24 +25,10 @@ export const metadata: Metadata = {
   },
   description:
     "Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds. For every type of creator.",
-  keywords: [
-    "content repurposing",
-    "AI content generation",
-    "video to blog",
-    "podcast repurposing",
-    "content multiplier",
-    "YouTube to newsletter",
-    "tweet thread generator",
-    "content creator tools",
-    "viral clips",
-    "social media automation",
-  ],
   authors: [{ name: "Expandcast" }],
   creator: "Expandcast",
-  icons: {
-    icon: [{ url: "/logo.png", type: "image/png" }],
-    apple: [{ url: "/logo.png", type: "image/png" }],
-    shortcut: "/logo.png",
+  verification: {
+    google: "1vQxDT_Wye7AJ1B4OTnO4anta1CuL4_ON-bQVuw7Ifs",
   },
   openGraph: {
     type: "website",
@@ -82,6 +68,39 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "Expandcast",
+      url: siteUrl,
+      logo: `${siteUrl}/icon.png`,
+      sameAs: ["https://twitter.com/expandcast"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: siteUrl,
+      name: "Expandcast",
+      description:
+        "Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds.",
+      publisher: { "@id": `${siteUrl}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Expandcast",
+      applicationCategory: "MultimediaApplication",
+      operatingSystem: "Web",
+      url: siteUrl,
+      description:
+        "Drop any video or audio. Automatically generate viral clips, blog posts, newsletters, and social threads in seconds. For every type of creator.",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -93,7 +112,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Expandcast" />
-        <link rel="apple-touch-icon" href="/logo.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body
         className={`${fontSans.variable} ${fontHeading.variable} antialiased`}
