@@ -12,6 +12,7 @@ import {
   searchSimilarDocuments,
 } from "@/lib/rag/embeddings";
 import { createChatTools } from "@/lib/chat/tools";
+import { getPinned } from "@/lib/memory/store";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
@@ -47,7 +48,8 @@ function buildSystemPrompt(
   }
 
   return (
-    `You are an expert Instagram content strategist, social media analyst, and creative assistant.\n\n` +
+    `You are an expert content strategist and creative assistant with access to the user's Memory — ` +
+    `a knowledge base that may include Instagram data, podcast episodes, transcriptions, and notes they wrote themselves.\n\n` +
     `${dataStatus}\n\n` +
     `You also have powerful tools at your disposal:\n\n` +
     `1. **generate_image** — Generate images on demand. Use this when the user asks to create images, ` +
@@ -146,8 +148,22 @@ export async function POST(req: Request) {
     }
   }
 
+  let pinnedBlock = "";
+  try {
+    const pinned = await getPinned(user.id);
+    if (pinned.length > 0) {
+      pinnedBlock =
+        "\n\nPINNED FACTS (always honor these — the user curated them):\n" +
+        pinned
+          .map((p) => `- ${p.title ? `${p.title}: ` : ""}${p.content}`)
+          .join("\n");
+    }
+  } catch (err) {
+    console.error("[chat] Failed to load pinned memories:", err);
+  }
+
   const docCounts = await getDocumentCounts(user.id);
-  const systemPrompt = buildSystemPrompt(contextBlock, docCounts);
+  const systemPrompt = buildSystemPrompt(contextBlock, docCounts) + pinnedBlock;
 
   const modelMessages = await convertToModelMessages(messages);
 
