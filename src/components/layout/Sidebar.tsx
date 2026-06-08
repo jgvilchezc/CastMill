@@ -15,6 +15,7 @@ import {
   BarChart3,
   Instagram,
   MessageSquare,
+  Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/context/user-context";
@@ -47,6 +48,7 @@ const navItems = [
     proOnly: true,
   },
   { label: "AI Chat", icon: MessageSquare, href: "/chat", proOnly: true },
+  { label: "Quick Transcribe", icon: Mic, href: "/transcribe" },
   { label: "Memory", icon: Brain, href: "/memory", disabled: true },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];

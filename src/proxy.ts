@@ -120,7 +120,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/episode") ||
     pathname.startsWith("/upload") ||
     pathname.startsWith("/channel") ||
-    pathname.startsWith("/settings");
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/transcribe");
 
   if (isAppRoute && !user) {
     const loginUrl = request.nextUrl.clone();
