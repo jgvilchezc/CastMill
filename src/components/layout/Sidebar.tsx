@@ -20,7 +20,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/context/user-context";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -49,7 +48,7 @@ const navItems = [
   },
   { label: "AI Chat", icon: MessageSquare, href: "/chat", proOnly: true },
   { label: "Quick Transcribe", icon: Mic, href: "/transcribe" },
-  { label: "Memory", icon: Brain, href: "/memory", disabled: true },
+  { label: "Memory", icon: Brain, href: "/memory" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
@@ -88,27 +87,17 @@ export function Sidebar({ onClose }: SidebarProps) {
             (item.href !== "/" && pathname.startsWith(item.href));
           return (
             <div key={item.href}>
-              {item.disabled ? (
-                <div className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground cursor-not-allowed opacity-50">
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                  <Badge variant="secondary" className="ml-auto text-xs py-0">
-                    Soon
-                  </Badge>
-                </div>
-              ) : (
-                <Link
-                  href={item.href}
-                  onClick={onClose}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-                    isActive && "bg-accent text-accent-foreground font-medium",
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Link>
-              )}
+              <Link
+                href={item.href}
+                onClick={onClose}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                  isActive && "bg-accent text-accent-foreground font-medium",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </Link>
             </div>
           );
         })}

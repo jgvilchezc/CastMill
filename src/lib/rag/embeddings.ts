@@ -23,6 +23,8 @@ export interface MatchedDocument {
   content: string;
   metadata: Record<string, unknown>;
   similarity: number;
+  pinned?: boolean;
+  title?: string | null;
 }
 
 export async function searchSimilarDocuments(

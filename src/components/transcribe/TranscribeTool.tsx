@@ -58,6 +58,8 @@ export function TranscribeTool() {
   const [editedText, setEditedText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [savedToMemory, setSavedToMemory] = useState(false);
+  const [savingMemory, setSavingMemory] = useState(false);
 
   function handleFile(picked: File | null) {
     setError(null);
@@ -73,6 +75,7 @@ export function TranscribeTool() {
     setFile(picked);
     setResult(null);
     setEditedText("");
+    setSavedToMemory(false);
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -141,6 +144,26 @@ export function TranscribeTool() {
   function handleDownloadTxt() {
     if (!editedText || !result) return;
     downloadBlob(editedText, `${baseName()}.txt`, "text/plain;charset=utf-8");
+  }
+
+  async function handleSaveToMemory() {
+    if (!editedText || !result) return;
+    setSavingMemory(true);
+    try {
+      const res = await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "transcript",
+          sourceId: result.filename,
+          title: result.filename,
+          content: editedText,
+        }),
+      });
+      if (res.ok) setSavedToMemory(true);
+    } finally {
+      setSavingMemory(false);
+    }
   }
 
   function handleDownloadMd() {
@@ -319,6 +342,15 @@ export function TranscribeTool() {
               <Button variant="outline" size="sm" onClick={handleDownloadMd}>
                 <Download className="h-4 w-4" />
                 .md
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSaveToMemory}
+                disabled={savingMemory || savedToMemory}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                {savedToMemory ? "Guardado en Memory" : savingMemory ? "Guardando…" : "Guardar en Memory"}
               </Button>
             </div>
           </div>
