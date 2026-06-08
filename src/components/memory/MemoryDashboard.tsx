@@ -44,15 +44,15 @@ export function MemoryDashboard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ q: query }),
     });
-    const data = await res.json() as { matches?: { id: string; source: string; content: string }[] };
-    type Match = { id: string; source: string; content: string };
+    const data = await res.json() as { matches?: { id: string; source: string; content: string; pinned?: boolean; title?: string | null }[] };
+    type Match = { id: string; source: string; content: string; pinned?: boolean; title?: string | null };
     setItems(
       ((data.matches ?? []) as Match[]).map((m) => ({
         id: m.id,
         source: m.source,
-        title: null,
+        title: m.title ?? null,
         content: m.content,
-        pinned: false,
+        pinned: m.pinned ?? false,
       })),
     );
     setLoading(false);

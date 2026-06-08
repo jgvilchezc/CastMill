@@ -46,7 +46,8 @@ export async function POST(req: Request) {
 
   const title =
     typeof body.title === "string" ? body.title.trim().slice(0, 200) : null;
-  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const content =
+    typeof body.content === "string" ? body.content.trim().slice(0, 10000) : "";
   const pinned = body.pinned === true;
 
   const ALLOWED_CLIENT_SOURCES = new Set(["manual", "transcript"]);

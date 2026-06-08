@@ -150,7 +150,7 @@ export async function POST(req: Request) {
 
   let pinnedBlock = "";
   try {
-    const pinned = await getPinned(user.id);
+    const pinned = (await getPinned(user.id)).slice(0, 25);
     if (pinned.length > 0) {
       pinnedBlock =
         "\n\nPINNED FACTS (always honor these — the user curated them):\n" +
