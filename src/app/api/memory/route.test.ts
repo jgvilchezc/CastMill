@@ -86,6 +86,37 @@ describe("POST /api/memory", () => {
       }),
     );
   });
+
+  it("accepts source=transcript with a sourceId", async () => {
+    authed();
+    store.saveMemory.mockResolvedValue({ id: "mem_t" });
+    const res = await POST(
+      new Request("http://x/api/memory", {
+        method: "POST",
+        body: JSON.stringify({
+          source: "transcript",
+          sourceId: "job_1",
+          title: "nota.m4a",
+          content: "texto transcrito",
+        }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(store.saveMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "transcript", sourceId: "job_1" }),
+    );
+  });
+
+  it("rejects an unknown source", async () => {
+    authed();
+    const res = await POST(
+      new Request("http://x/api/memory", {
+        method: "POST",
+        body: JSON.stringify({ source: "hacker", content: "x" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("PATCH /api/memory", () => {

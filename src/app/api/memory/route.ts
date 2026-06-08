@@ -31,7 +31,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { title?: unknown; content?: unknown; pinned?: unknown };
+  let body: {
+    title?: unknown;
+    content?: unknown;
+    pinned?: unknown;
+    source?: unknown;
+    sourceId?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -42,6 +48,22 @@ export async function POST(req: Request) {
     typeof body.title === "string" ? body.title.trim().slice(0, 200) : null;
   const content = typeof body.content === "string" ? body.content.trim() : "";
   const pinned = body.pinned === true;
+
+  const ALLOWED_CLIENT_SOURCES = new Set(["manual", "transcript"]);
+  if (
+    typeof body.source === "string" &&
+    !ALLOWED_CLIENT_SOURCES.has(body.source)
+  ) {
+    return NextResponse.json({ error: "Invalid source" }, { status: 400 });
+  }
+  const source =
+    typeof body.source === "string" && ALLOWED_CLIENT_SOURCES.has(body.source)
+      ? (body.source as "manual" | "transcript")
+      : "manual";
+  const sourceId =
+    typeof body.sourceId === "string" && body.sourceId
+      ? body.sourceId
+      : crypto.randomUUID();
 
   if (!content) {
     return NextResponse.json({ error: "Content required" }, { status: 400 });
@@ -55,8 +77,8 @@ export async function POST(req: Request) {
 
   const { id } = await saveMemory({
     userId,
-    source: "manual",
-    sourceId: crypto.randomUUID(),
+    source,
+    sourceId,
     title,
     content,
     pinned,
