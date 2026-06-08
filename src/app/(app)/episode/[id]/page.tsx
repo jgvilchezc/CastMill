@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Scissors, Trash2, Loader2 } from "lucide-react"
+import { ArrowLeft, Brain, Scissors, Trash2, Loader2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -25,6 +25,27 @@ export default function EpisodePage() {
   const [isGeneratingAll, setIsGeneratingAll] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRefreshingTranscript, setIsRefreshingTranscript] = useState(true)
+  const [isIndexing, setIsIndexing] = useState(false)
+  const [indexedDone, setIndexedDone] = useState(false)
+
+  async function indexInMemory(episodeId: string, title: string) {
+    const res = await fetch("/api/memory/episode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episodeId, title }),
+    })
+    return res.ok
+  }
+
+  const handleIndexInMemory = async () => {
+    setIsIndexing(true)
+    try {
+      const ok = await indexInMemory(id, episode?.title ?? "Episodio")
+      if (ok) setIndexedDone(true)
+    } finally {
+      setIsIndexing(false)
+    }
+  }
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -119,6 +140,25 @@ export default function EpisodePage() {
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={handleIndexInMemory}
+              disabled={!transcript || isIndexing || indexedDone}
+              title={
+                !transcript
+                  ? "No transcript available"
+                  : indexedDone
+                  ? "Indexed in Memory"
+                  : "Index in Memory"
+              }
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isIndexing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Brain className="h-3.5 w-3.5" />
+              }
+              {indexedDone ? "Indexed in Memory" : isIndexing ? "Indexing…" : "Index in Memory"}
+            </button>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
