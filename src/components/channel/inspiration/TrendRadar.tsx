@@ -90,12 +90,13 @@ export function TrendRadar({ channelId, channelData, initialData, onSaved, onSav
 
   function handleSave(trend: Trend, index: number) {
     onSaveToMoodBoard({
-      id: `trend-${Date.now()}-${index}`,
+      id: `trend-${crypto.randomUUID()}`,
       type: "trend",
       title: trend.name,
       description: trend.why,
       format: trend.format,
       hook: trend.hook,
+      // eslint-disable-next-line react-hooks/purity -- timestamp at click time is intentional
       savedAt: Date.now(),
     })
     setSavedIds((prev) => new Set([...prev, index]))

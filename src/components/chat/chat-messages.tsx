@@ -96,6 +96,7 @@ function ImageResult({ imageUrl }: { imageUrl: string }) {
 
   return (
     <div className="group/img relative overflow-hidden rounded-xl border border-border/50 bg-muted/30">
+      {/* eslint-disable-next-line @next/next/no-img-element -- dynamic external CDN (AI-generated image URL), domain whitelist not maintainable */}
       <img
         src={imageUrl}
         alt="Generated image"

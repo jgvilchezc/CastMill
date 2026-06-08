@@ -44,8 +44,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ profile: object });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Voice Analysis Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to analyze voice" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to analyze voice";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

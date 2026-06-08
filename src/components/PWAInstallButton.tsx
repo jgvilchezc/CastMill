@@ -18,6 +18,7 @@ export function PWAInstallButton() {
 
   useEffect(() => {
     if (window.matchMedia("(display-mode: standalone)").matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot install-prompt detection on mount
       setIsInstalled(true);
       return;
     }

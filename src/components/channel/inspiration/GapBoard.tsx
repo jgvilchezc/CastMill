@@ -96,11 +96,12 @@ export function GapBoard({ channelId, channelData, initialData, onSaved, onSaveT
 
   function handleSave(gap: GapIdea, index: number) {
     onSaveToMoodBoard({
-      id: `gap-${Date.now()}-${index}`,
+      id: `gap-${crypto.randomUUID()}`,
       type: "gap",
       title: gap.title,
       description: gap.angle,
       format: gap.format,
+      // eslint-disable-next-line react-hooks/purity -- timestamp at click time is intentional
       savedAt: Date.now(),
     })
     setSavedIds((prev) => new Set([...prev, index]))

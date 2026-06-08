@@ -22,7 +22,6 @@ function AnalysisLoader() {
 
   useEffect(() => {
     let stepIndex = 0
-    let elapsed = 0
 
     const advance = () => {
       const step = ANALYSIS_STEPS[stepIndex]
@@ -32,7 +31,6 @@ function AnalysisLoader() {
         stepIndex++
         if (stepIndex < ANALYSIS_STEPS.length) {
           setActiveStep(stepIndex)
-          elapsed += step.duration
           advance()
         }
       }, step.duration)

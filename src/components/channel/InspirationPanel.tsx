@@ -47,6 +47,7 @@ export function InspirationPanel({
   useEffect(() => {
     try {
       const stored = localStorage.getItem(moodKey)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage hydration on mount
       if (stored) setMoodBoardItems(JSON.parse(stored) as MoodBoardItem[])
     } catch {}
     setMoodHydrated(true)

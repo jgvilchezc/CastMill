@@ -75,11 +75,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [voiceProfile, setVoiceProfile] = useState<VoiceProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured());
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setIsLoading(false);
       return;
     }
 

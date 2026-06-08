@@ -37,6 +37,7 @@ export function ProfileHeader({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- dynamic external CDN (Instagram/TikTok avatar), domain whitelist not maintainable
               <img
                 src={avatarUrl}
                 alt={username ?? platform}

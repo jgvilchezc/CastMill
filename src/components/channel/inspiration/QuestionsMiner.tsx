@@ -76,18 +76,19 @@ export function QuestionsMiner({ channelId, channelData, initialData, onSaved, o
   function toggleExpand(index: number) {
     setExpandedItems((prev) => {
       const next = new Set(prev)
-      next.has(index) ? next.delete(index) : next.add(index)
+      if (next.has(index)) { next.delete(index) } else { next.add(index) }
       return next
     })
   }
 
   function handleSave(q: AudienceQuestion, index: number) {
     onSaveToMoodBoard({
-      id: `question-${Date.now()}-${index}`,
+      id: `question-${crypto.randomUUID()}`,
       type: "question",
       title: q.videoIdea,
       description: q.question,
       hook: q.introHook,
+      // eslint-disable-next-line react-hooks/purity -- timestamp at click time is intentional
       savedAt: Date.now(),
     })
     setSavedIds((prev) => new Set([...prev, index]))

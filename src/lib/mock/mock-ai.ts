@@ -1,4 +1,3 @@
-import { mockEpisodes, Episode } from "../fixtures/episodes";
 import { mockTranscripts, Transcript } from "../fixtures/transcripts";
 import { mockGenerations, Generation, ContentFormat } from "../fixtures/generations";
 import { mockVoiceProfile, VoiceProfile } from "../fixtures/voice-profile";
@@ -23,7 +22,7 @@ export const mockAI = {
         return data.profile;
       }
       // If 501 (Not Implemented / No Keys), fallback to mock
-    } catch (e) {
+    } catch {
       console.log("Falling back to mock voice profile");
     }
 
@@ -61,7 +60,7 @@ export const mockAI = {
           ]
         };
       }
-    } catch (e) {
+    } catch {
       console.log("Falling back to mock transcription");
     }
 
@@ -73,7 +72,7 @@ export const mockAI = {
     return mockTranscripts["ep_50"]; // Always return ep_50 transcript for demo
   },
 
-  generateContent: async (episodeId: string, format: ContentFormat, transcriptText?: string, voiceProfile?: VoiceProfile): Promise<Generation> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  generateContent: async (episodeId: string, format: ContentFormat, transcriptText?: string, voiceProfile?: VoiceProfile): Promise<Generation> => {
     try {
       // If we have the transcript text passed in, try the real API
       if (transcriptText) {
@@ -96,7 +95,7 @@ export const mockAI = {
           };
         }
       }
-    } catch (e) {
+    } catch {
       console.log("Falling back to mock generation");
     }
 

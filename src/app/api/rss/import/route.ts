@@ -101,7 +101,6 @@ export async function POST(req: Request) {
       }
 
       const duration = parseItunesDuration(item['itunes:duration']);
-      const audioUrl = item.enclosure?.['@_url'] ?? null;
       const description = typeof item.description === "string"
         ? item.description.replace(/<[^>]*>/g, "").slice(0, 500)
         : "";

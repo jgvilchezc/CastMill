@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Youtube, Lock, Globe, ArrowRight, Loader2, Zap, Plus, Users, Eye, BarChart3, ChevronRight, CheckCircle2 } from "lucide-react"
+import { Youtube, Lock, Globe, ArrowRight, Loader2, Plus, Users, Eye, BarChart3, ChevronRight, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"

@@ -48,10 +48,11 @@ export function SeriesArchitect({ channelId, channelData, initialData, onSaved, 
 
   function handleSaveSeries(s: SeriesItem, index: number) {
     onSaveToMoodBoard({
-      id: `series-${Date.now()}-${index}`,
+      id: `series-${crypto.randomUUID()}`,
       type: "series",
       title: s.seriesName,
       description: s.description,
+      // eslint-disable-next-line react-hooks/purity -- timestamp at click time is intentional
       savedAt: Date.now(),
     })
     setSavedSeries((prev) => new Set([...prev, index]))
@@ -59,10 +60,11 @@ export function SeriesArchitect({ channelId, channelData, initialData, onSaved, 
 
   function handleSaveEpisode(ep: { title: string; angle: string }, seriesName: string, key: string) {
     onSaveToMoodBoard({
-      id: `series-ep-${Date.now()}-${key}`,
+      id: `series-ep-${crypto.randomUUID()}`,
       type: "series",
       title: ep.title,
       description: `${seriesName}: ${ep.angle}`,
+      // eslint-disable-next-line react-hooks/purity -- timestamp at click time is intentional
       savedAt: Date.now(),
     })
     setSavedEpisodes((prev) => new Set([...prev, key]))

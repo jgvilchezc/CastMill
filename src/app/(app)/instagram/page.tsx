@@ -6,7 +6,6 @@ import {
   UserPlus,
   ImageIcon,
   Heart,
-  Eye,
   Clock,
   MessageCircle,
   Video,

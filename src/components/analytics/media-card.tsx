@@ -54,6 +54,7 @@ export function MediaCard({ item, compact, aspectRatio = "square" }: MediaCardPr
       >
         {item.thumbnailUrl ? (
           <div className={cn("overflow-hidden bg-muted relative", aspectClass)}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- dynamic external CDN, optimization not worth domain whitelist maintenance */}
             <img
               src={item.thumbnailUrl}
               alt={title}
@@ -98,6 +99,7 @@ export function MediaCard({ item, compact, aspectRatio = "square" }: MediaCardPr
     >
       {item.thumbnailUrl ? (
         <div className="w-16 h-20 rounded-lg overflow-hidden bg-muted shrink-0 relative">
+          {/* eslint-disable-next-line @next/next/no-img-element -- dynamic external CDN, optimization not worth domain whitelist maintenance */}
           <img src={item.thumbnailUrl} alt={title} className="w-full h-full object-cover" />
         </div>
       ) : (
