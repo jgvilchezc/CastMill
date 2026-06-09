@@ -12,6 +12,8 @@ import {
   transcribeWithHuggingFace,
   type WhisperResult,
 } from "@/lib/transcribe/whisper";
+import { generateTitle } from "@/lib/transcribe/title";
+import { saveTranscription } from "@/lib/transcribe/history";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_GLOSSARY_CHARS = 500;
@@ -190,11 +192,32 @@ export async function POST(req: Request) {
       : result.text.trim();
   const duration = inferDuration(result.segments);
 
+  let historyId: string | null = null;
+  let title: string | null = null;
+  if (user) {
+    try {
+      title = await generateTitle(text);
+      historyId = await saveTranscription(supabase, {
+        userId: user.id,
+        title,
+        text,
+        language: result.language === "unknown" ? null : result.language,
+        duration,
+        filename: audio.name,
+        provider: result.provider,
+      });
+    } catch (err) {
+      console.error("[transcribe] history save failed:", err);
+    }
+  }
+
   return NextResponse.json({
     text,
     language: result.language,
     duration,
     filename: audio.name,
     provider: result.provider,
+    historyId,
+    title,
   });
 }
