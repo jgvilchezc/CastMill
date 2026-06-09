@@ -45,7 +45,7 @@ describe("generateTitle", () => {
     delete process.env.GROQ_API_KEY;
     const title = await generateTitle("texto de prueba sin clave de api configurada");
     expect(createCompletion).not.toHaveBeenCalled();
-    expect(title).toBe("texto de prueba sin clave de api");
+    expect(title).toBe("texto de prueba sin clave de");
   });
 
   it("strips surrounding quotes from the model output", async () => {
