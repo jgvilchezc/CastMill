@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   UploadCloud,
@@ -11,7 +11,10 @@ import {
   Check,
   X,
   Sparkles,
+  Clock,
+  Trash2,
 } from "lucide-react";
+import { useUser } from "@/lib/context/user-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +32,16 @@ interface TranscriptionResult {
   duration: number;
   filename: string;
   provider: "groq" | "huggingface";
+}
+
+interface HistoryItem {
+  id: string;
+  title: string;
+  text: string;
+  language: string | null;
+  duration: number | null;
+  filename: string | null;
+  created_at: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -60,6 +73,38 @@ export function TranscribeTool() {
   const [copied, setCopied] = useState(false);
   const [savedToMemory, setSavedToMemory] = useState(false);
   const [savingMemory, setSavingMemory] = useState(false);
+
+  const { user } = useUser();
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/tools/transcribe/history")
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setHistory((d.items ?? []) as HistoryItem[]))
+      .catch(() => {});
+  }, [user]);
+
+  function loadFromHistory(item: HistoryItem) {
+    setResult({
+      text: item.text,
+      language: item.language ?? "unknown",
+      duration: item.duration ?? 0,
+      filename: item.filename ?? "historial",
+      provider: "groq",
+    });
+    setEditedText(item.text);
+    setError(null);
+  }
+
+  async function deleteFromHistory(id: string) {
+    await fetch("/api/tools/transcribe/history", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setHistory((prev) => prev.filter((h) => h.id !== id));
+  }
 
   function handleFile(picked: File | null) {
     setError(null);
@@ -110,6 +155,20 @@ export function TranscribeTool() {
 
       setResult(data);
       setEditedText(data.text);
+      if (data.historyId && data.title) {
+        setHistory((prev) => [
+          {
+            id: data.historyId,
+            title: data.title,
+            text: data.text,
+            language: data.language ?? null,
+            duration: data.duration ?? null,
+            filename: data.filename ?? null,
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo transcribir.");
     } finally {
@@ -364,6 +423,40 @@ export function TranscribeTool() {
             Editá el texto si querés antes de copiar/descargar.
           </p>
         </motion.div>
+      )}
+      {user && history.length > 0 && (
+        <div className="mt-8 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            Historial
+          </div>
+          <div className="space-y-1">
+            {history.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 rounded-lg border border-border/50 px-3 py-2 hover:bg-muted/40 transition-colors"
+              >
+                <button
+                  onClick={() => loadFromHistory(item)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <p className="text-sm font-medium truncate">{item.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {item.filename ?? "audio"} ·{" "}
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </p>
+                </button>
+                <button
+                  onClick={() => deleteFromHistory(item.id)}
+                  aria-label="Eliminar"
+                  className="text-muted-foreground/60 hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
