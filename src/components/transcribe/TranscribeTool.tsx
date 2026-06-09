@@ -42,6 +42,7 @@ interface HistoryItem {
   duration: number | null;
   filename: string | null;
   created_at: string;
+  provider: string | null;
 }
 
 function formatFileSize(bytes: number): string {
@@ -83,7 +84,8 @@ export function TranscribeTool() {
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then((d) => setHistory((d.items ?? []) as HistoryItem[]))
       .catch(() => {});
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch when the user identity changes
+  }, [user?.id]);
 
   function loadFromHistory(item: HistoryItem) {
     setResult({
@@ -91,19 +93,21 @@ export function TranscribeTool() {
       language: item.language ?? "unknown",
       duration: item.duration ?? 0,
       filename: item.filename ?? "historial",
-      provider: "groq",
+      provider: (item.provider === "huggingface" ? "huggingface" : "groq"),
     });
     setEditedText(item.text);
     setError(null);
   }
 
   async function deleteFromHistory(id: string) {
-    await fetch("/api/tools/transcribe/history", {
+    const res = await fetch("/api/tools/transcribe/history", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    setHistory((prev) => prev.filter((h) => h.id !== id));
+    if (res.ok) {
+      setHistory((prev) => prev.filter((h) => h.id !== id));
+    }
   }
 
   function handleFile(picked: File | null) {
@@ -165,6 +169,7 @@ export function TranscribeTool() {
             duration: data.duration ?? null,
             filename: data.filename ?? null,
             created_at: new Date().toISOString(),
+            provider: data.provider ?? null,
           },
           ...prev,
         ]);
