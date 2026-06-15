@@ -85,6 +85,9 @@ export async function POST(req: Request) {
 
   const audio = formData.get("audio");
   const glossaryRaw = formData.get("glossary");
+  const skipHistoryRaw = formData.get("skipHistory");
+  const skipHistory =
+    typeof skipHistoryRaw === "string" && skipHistoryRaw.length > 0;
 
   if (!(audio instanceof File)) {
     return NextResponse.json(
@@ -194,7 +197,7 @@ export async function POST(req: Request) {
 
   let historyId: string | null = null;
   let title: string | null = null;
-  if (user) {
+  if (user && !skipHistory) {
     try {
       title = await generateTitle(text);
       historyId = await saveTranscription(supabase, {
