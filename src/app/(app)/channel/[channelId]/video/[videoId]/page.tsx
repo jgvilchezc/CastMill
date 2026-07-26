@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/neon/client"
 import { VideoHub } from "@/components/channel/VideoHub"
 import { VideoDetailSkeleton } from "@/components/skeletons"
 

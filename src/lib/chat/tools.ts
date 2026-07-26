@@ -1,7 +1,7 @@
 import { tool, generateImage } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod/v4";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSql } from "@/lib/neon/db";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
@@ -59,15 +59,19 @@ async function publishToInstagramAPI(
   mediaType: "IMAGE" | "REEL",
   mediaUrl: string
 ): Promise<{ success: boolean; mediaId?: string; error?: string }> {
-  const supabase = createAdminClient();
+  const sql = getSql();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: account } = await (supabase as any)
-    .from("connected_accounts")
-    .select("access_token, platform_user_id, expires_at")
-    .eq("user_id", userId)
-    .eq("platform", "instagram")
-    .single();
+  const accounts = (await sql`
+    select access_token, platform_user_id, expires_at
+    from connected_accounts
+    where user_id = ${userId} and platform = 'instagram'
+  `) as {
+    access_token: string;
+    platform_user_id: string | null;
+    expires_at: Date | null;
+  }[];
+
+  const account = accounts[0];
 
   if (!account) {
     return { success: false, error: "Instagram account not connected" };

@@ -6,7 +6,7 @@ import { Youtube, Lock, Globe, ArrowRight, Loader2, Plus, Users, Eye, BarChart3,
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/neon/client"
 import { ChannelListSkeleton } from "@/components/skeletons"
 
 interface SavedChannel {

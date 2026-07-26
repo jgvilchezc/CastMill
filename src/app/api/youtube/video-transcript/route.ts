@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 import { YoutubeTranscript } from "youtube-transcript";
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
@@ -14,11 +14,10 @@ export async function POST(req: Request) {
   if (manualText) {
     const transcript = { text: manualText.trim(), segments: [] };
     if (channelVideoId) {
-      await supabase
-        .from("channel_videos")
-        .update({ transcript })
-        .eq("id", channelVideoId)
-        .eq("user_id", user.id);
+      await getSql()`
+        update channel_videos set transcript = ${JSON.stringify(transcript)}::jsonb
+        where id = ${channelVideoId} and user_id = ${user.id}
+      `;
     }
     return NextResponse.json({ transcript });
   }
@@ -38,11 +37,10 @@ export async function POST(req: Request) {
       };
 
       if (channelVideoId) {
-        await supabase
-          .from("channel_videos")
-          .update({ transcript })
-          .eq("id", channelVideoId)
-          .eq("user_id", user.id);
+        await getSql()`
+          update channel_videos set transcript = ${JSON.stringify(transcript)}::jsonb
+          where id = ${channelVideoId} and user_id = ${user.id}
+        `;
       }
 
       return NextResponse.json({ transcript });

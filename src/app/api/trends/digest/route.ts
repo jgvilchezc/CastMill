@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { getProfile } from "@/lib/neon/queries";
 
 export const maxDuration = 30;
 
@@ -178,18 +180,11 @@ function matchNiche(topics: string[]): string {
 }
 
 export async function GET(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("id", user.id)
-    .single();
+  const profile = await getProfile(user.id);
 
   if (!profile || profile.plan !== "pro") {
     return NextResponse.json(
@@ -203,12 +198,10 @@ export async function GET(req: Request) {
   const topics = rawTopics ? rawTopics.split(",").map((t) => t.trim()) : [];
   const niche = matchNiche(topics);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: cached } = await (supabase as any)
-    .from("trend_digests")
-    .select("data, expires_at")
-    .eq("niche", niche)
-    .single();
+  const cachedRows = (await getSql()`
+    select data, expires_at from trend_digests where niche = ${niche}
+  `) as { data: unknown; expires_at: Date }[];
+  const cached = cachedRows[0] ?? null;
 
   if (cached && new Date(cached.expires_at) > new Date()) {
     return NextResponse.json({ niche, digest: cached.data, source: "cache" });
@@ -258,13 +251,12 @@ export async function GET(req: Request) {
     Date.now() + 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from("trend_digests")
-    .upsert(
-      { niche, data: JSON.parse(JSON.stringify(digest)), expires_at: expiresAt },
-      { onConflict: "niche" },
-    );
+  await getSql()`
+    insert into trend_digests (niche, data, expires_at)
+    values (${niche}, ${JSON.stringify(digest)}::jsonb, ${expiresAt})
+    on conflict (niche) do update set
+      data = excluded.data, expires_at = excluded.expires_at
+  `;
 
   return NextResponse.json({ niche, digest, source: "fresh" });
 }

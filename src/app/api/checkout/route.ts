@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
 import { createCheckoutSession } from "@/lib/stripe";
 import { parseJsonBody } from "@/lib/security/validate";
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -36,7 +32,7 @@ export async function POST(req: NextRequest) {
       interval,
       userId: user.id,
       userEmail: user.email!,
-      userName: user.user_metadata?.full_name ?? null,
+      userName: user.name,
     });
 
     return NextResponse.json({ url });

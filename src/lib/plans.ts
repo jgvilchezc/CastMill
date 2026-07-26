@@ -1,6 +1,5 @@
-import type { Database } from "@/lib/supabase/types";
-
-export type PlanId = Database["public"]["Tables"]["profiles"]["Row"]["plan"];
+/** Mirrors the profiles.plan CHECK constraint in neon/schema.sql. */
+export type PlanId = "free" | "starter" | "pro";
 
 export type ContentFormat =
   | "blog"

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
 import {
   listTranscriptions,
   deleteTranscription,
@@ -8,22 +8,16 @@ import {
 import { generateTitle } from "@/lib/transcribe/title";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const items = await listTranscriptions(supabase, user.id);
+  const items = await listTranscriptions(user.id);
   return NextResponse.json({ items });
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -52,7 +46,7 @@ export async function POST(req: Request) {
       ? body.filename
       : `Conversación (${body.fileCount ?? 0} audios)`;
 
-  const id = await saveTranscription(supabase, {
+  const id = await saveTranscription({
     userId: user.id,
     title,
     text,
@@ -70,10 +64,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -81,6 +72,6 @@ export async function DELETE(req: Request) {
   if (!body.id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
-  await deleteTranscription(supabase, body.id, user.id);
+  await deleteTranscription(body.id, user.id);
   return NextResponse.json({ ok: true });
 }

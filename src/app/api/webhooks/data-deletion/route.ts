@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSql } from "@/lib/neon/db";
 
 function parseSignedRequest(signedRequest: string, appSecret: string) {
   const [encodedSig, payload] = signedRequest.split(".");
@@ -45,20 +45,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = createAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from("rag_documents")
-    .delete()
-    .eq("user_id", data.user_id);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from("connected_accounts")
-    .delete()
-    .eq("platform_user_id", data.user_id)
-    .eq("platform", "instagram");
+  const sql = getSql();
+  await sql`delete from rag_documents where user_id = ${data.user_id}`;
+  await sql`
+    delete from connected_accounts
+    where platform_user_id = ${data.user_id} and platform = 'instagram'
+  `;
 
   const confirmationCode = crypto.randomUUID();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://expandcast.com";

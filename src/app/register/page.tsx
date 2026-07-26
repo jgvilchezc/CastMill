@@ -29,7 +29,7 @@ function RegisterForm() {
   const [state, action, isPending] = useActionState(register, undefined);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
-  async function handleOAuth(provider: "google" | "twitter") {
+  async function handleOAuth(provider: "google" | "github" | "vercel") {
     setOauthLoading(provider);
     try {
       await signInWithOAuth(provider);

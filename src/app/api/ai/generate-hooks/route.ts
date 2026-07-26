@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/types";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { getProfile } from "@/lib/neon/queries";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("id", user.id)
-    .single();
+  const profile = await getProfile(user.id);
 
   if (!profile || profile.plan === "free") {
     return NextResponse.json(
@@ -155,24 +149,24 @@ Return ONLY valid JSON with no markdown:
   }
 
   if (episodeId && momentId) {
-    const { data: ep } = await supabase
-      .from("episodes")
-      .select("viral_moments")
-      .eq("id", episodeId)
-      .eq("user_id", user.id)
-      .single();
+    const epRows = (await getSql()`
+      select viral_moments from episodes
+      where id = ${episodeId} and user_id = ${user.id}
+    `) as { viral_moments: unknown }[];
+    const ep = epRows[0] ?? null;
 
     if (ep?.viral_moments && Array.isArray(ep.viral_moments)) {
       const updated = (ep.viral_moments as { id?: string; [key: string]: unknown }[]).map((m) =>
         m.id === momentId ? { ...m, hooks } : m
       );
-      const { error: updateErr } = await supabase
-        .from("episodes")
-        .update({ viral_moments: updated as unknown as Database["public"]["Tables"]["episodes"]["Update"]["viral_moments"] })
-        .eq("id", episodeId);
-
-      if (updateErr) {
-        console.error("generate-hooks: failed to persist hooks:", updateErr.message);
+      try {
+        await getSql()`
+          update episodes set viral_moments = ${JSON.stringify(updated)}::jsonb
+          where id = ${episodeId} and user_id = ${user.id}
+        `;
+      } catch (updateErr) {
+        console.error("generate-hooks: failed to persist hooks:",
+          updateErr instanceof Error ? updateErr.message : updateErr);
       }
     }
   }

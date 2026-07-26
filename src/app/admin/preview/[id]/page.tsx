@@ -1,4 +1,7 @@
-import { requireAdmin, createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { normalizeRow, normalizeRows } from "@/lib/neon/rows";
+import type { ProfilesRow } from "@/lib/neon/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Eye, Film, Mic, FileText, Twitter, Linkedin, Mail, Youtube, Image } from "lucide-react";
@@ -32,35 +35,43 @@ export default async function PreviewPage({
   }
 
   const { id } = await params;
-  const admin = createAdminClient();
+  const sql = getSql();
 
-  const [
-    { data: profile },
-    { data: authUser },
-    { data: episodes },
-    { data: recentGenerations },
-  ] = await Promise.all([
-    admin.from("profiles").select("*").eq("id", id).single(),
-    admin.auth.admin.getUserById(id),
-    admin
-      .from("episodes")
-      .select("id, title, status, created_at, generation_count, description, duration")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(10),
-    admin
-      .from("generations")
-      .select("id, episode_id, format, status, created_at")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false })
-      .limit(12),
+  const [profileRows, authRows, episodeRows, generationRows] = await Promise.all([
+    sql`select * from profiles where id = ${id}`,
+    sql`select email from neon_auth."user" where id = ${id}`,
+    sql`
+      select id, title, status, created_at, generation_count, description, duration
+      from episodes
+      where user_id = ${id}
+      order by created_at desc
+      limit 10
+    `,
+    sql`
+      select id, episode_id, format, status, created_at
+      from generations
+      where user_id = ${id}
+      order by created_at desc
+      limit 12
+    `,
   ]);
 
-  if (!profile) {
+  const profileRow = (profileRows as Record<string, unknown>[])[0];
+  if (!profileRow) {
     return <div className="p-8 text-xs text-red-400 font-mono">User not found.</div>;
   }
+  const profile = normalizeRow<ProfilesRow>(profileRow);
 
-  const email = authUser.user?.email ?? null;
+  const episodes = normalizeRows<{
+    id: string; title: string; status: string; created_at: string;
+    generation_count: number; description: string | null; duration: number;
+  }>(episodeRows as Record<string, unknown>[]);
+
+  const recentGenerations = normalizeRows<{
+    id: string; episode_id: string; format: string; status: string; created_at: string;
+  }>(generationRows as Record<string, unknown>[]);
+
+  const email = (authRows as { email: string }[])[0]?.email ?? null;
   const planConfig = PLANS[profile.plan as PlanId];
   const episodeCount = episodes?.length ?? 0;
 

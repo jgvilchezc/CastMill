@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { upsertConnectedAccount } from "@/lib/neon/queries";
 import { isValidUUID } from "@/lib/security/validate";
 
 export async function GET(req: Request) {
@@ -25,8 +26,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${appUrl}/settings?error=instagram_invalid_state`);
   }
 
-  const supabaseCheck = await createClient();
-  const { data: { user: sessionUser } } = await supabaseCheck.auth.getUser();
+  const sessionUser = await getSessionUser();
   if (!sessionUser || sessionUser.id !== userId) {
     return NextResponse.redirect(`${appUrl}/settings?error=instagram_session_mismatch`);
   }
@@ -89,22 +89,16 @@ export async function GET(req: Request) {
     };
   }
 
-  const supabase = await createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("connected_accounts").upsert(
-    {
-      user_id: userId,
-      platform: "instagram",
-      access_token: finalToken,
-      refresh_token: null,
-      expires_at: expiresAt,
-      platform_user_id: String(platformUserId),
-      platform_username: platformUsername,
-      platform_meta: platformMeta,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,platform" }
-  );
+  await upsertConnectedAccount({
+    userId,
+    platform: "instagram",
+    accessToken: finalToken,
+    refreshToken: null,
+    expiresAt,
+    platformUserId: String(platformUserId),
+    platformUsername,
+    platformMeta,
+  });
 
   return NextResponse.redirect(`${appUrl}/settings?connected=instagram`);
 }

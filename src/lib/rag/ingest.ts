@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSql } from "@/lib/neon/db";
 import { generateEmbedding } from "./embeddings";
 
 interface InstagramMedia {
@@ -150,34 +150,32 @@ interface UpsertResult {
 
 async function upsertDocuments(docs: RagDocument[]): Promise<UpsertResult> {
   if (docs.length === 0) return { upserted: 0, failed: 0 };
-  const supabase = createAdminClient();
+  const sql = getSql();
   let upserted = 0;
   let failed = 0;
   let firstError: string | undefined;
 
   for (const doc of docs) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from("rag_documents")
-      .upsert(
-        {
-          user_id: doc.user_id,
-          source: doc.source,
-          source_id: doc.source_id,
-          content: doc.content,
-          metadata: doc.metadata,
-          embedding: doc.embedding,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,source,source_id" }
-      );
-
-    if (error) {
-      failed++;
-      if (!firstError) firstError = error.message ?? JSON.stringify(error);
-      console.error("[rag/ingest] upsert error:", error);
-    } else {
+    try {
+      await sql`
+        insert into rag_documents
+          (user_id, source, source_id, content, metadata, embedding, updated_at)
+        values (
+          ${doc.user_id}, ${doc.source}, ${doc.source_id}, ${doc.content},
+          ${JSON.stringify(doc.metadata)}::jsonb, ${doc.embedding}::vector, now()
+        )
+        on conflict (user_id, source, source_id) do update set
+          content    = excluded.content,
+          metadata   = excluded.metadata,
+          embedding  = excluded.embedding,
+          updated_at = now()
+      `;
       upserted++;
+    } catch (error) {
+      failed++;
+      const message = error instanceof Error ? error.message : JSON.stringify(error);
+      if (!firstError) firstError = message;
+      console.error("[rag/ingest] upsert error:", error);
     }
   }
 
@@ -196,15 +194,18 @@ export interface IngestResult {
 export async function ingestInstagramData(
   userId: string
 ): Promise<IngestResult> {
-  const supabase = createAdminClient();
+  const accounts = (await getSql()`
+    select access_token, expires_at, platform_username, platform_meta
+    from connected_accounts
+    where user_id = ${userId} and platform = 'instagram'
+  `) as {
+    access_token: string;
+    expires_at: Date | null;
+    platform_username: string | null;
+    platform_meta: Record<string, unknown> | null;
+  }[];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: account } = await (supabase as any)
-    .from("connected_accounts")
-    .select("access_token, expires_at, platform_username, platform_meta")
-    .eq("user_id", userId)
-    .eq("platform", "instagram")
-    .single();
+  const account = accounts[0];
 
   if (!account) {
     throw new Error("Instagram account not connected");
@@ -293,7 +294,7 @@ export async function ingestInstagramData(
     result.warning =
       existingWarning +
       `Failed to index ${upsertResult.failed} documents to the database. ` +
-      `Make sure the rag_documents table and pgvector extension are set up in Supabase. ` +
+      `Make sure the rag_documents table and pgvector extension are set up in Neon. ` +
       (upsertResult.firstError ? `Error: ${upsertResult.firstError}` : "");
   } else if (upsertResult.failed > 0) {
     const existingWarning = result.warning ? result.warning + " " : "";

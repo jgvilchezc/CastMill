@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import type { ChannelsRow, ChannelVideosRow } from "@/lib/neon/types";
+import { normalizeRow, normalizeRows } from "@/lib/neon/rows";
+import { getSql } from "@/lib/neon/db";
 
 const YT_API = "https://www.googleapis.com/youtube/v3";
 
@@ -48,8 +51,7 @@ async function fetchChannelByUsername(username: string, apiKey: string) {
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const apiKey = process.env.YOUTUBE_API_KEY;
@@ -112,24 +114,40 @@ export async function POST(req: Request) {
   }
 
   // Upsert channel in DB
-  const { data: savedChannel, error: channelErr } = await supabase
-    .from("channels")
-    .upsert({
-      user_id: user.id,
-      youtube_channel_id: channelId,
-      title: snippet.title,
-      handle: snippet.customUrl ?? null,
-      description: snippet.description ?? null,
-      thumbnail_url: snippet.thumbnails?.medium?.url ?? snippet.thumbnails?.default?.url ?? null,
-      subscriber_count: parseInt(stats.subscriberCount ?? "0"),
-      video_count: parseInt(stats.videoCount ?? "0"),
-      view_count: parseInt(stats.viewCount ?? "0"),
-    }, { onConflict: "user_id,youtube_channel_id" })
-    .select()
-    .single();
-
-  if (channelErr) {
-    return NextResponse.json({ error: channelErr.message }, { status: 500 });
+  let savedChannel: ChannelsRow;
+  try {
+    const rows = (await getSql()`
+      insert into channels
+        (user_id, youtube_channel_id, title, handle, description, thumbnail_url,
+         subscriber_count, video_count, view_count)
+      values (
+        ${user.id}, ${channelId}, ${snippet.title}, ${snippet.customUrl ?? null},
+        ${snippet.description ?? null},
+        ${snippet.thumbnails?.medium?.url ?? snippet.thumbnails?.default?.url ?? null},
+        ${parseInt(stats.subscriberCount ?? "0")},
+        ${parseInt(stats.videoCount ?? "0")},
+        ${parseInt(stats.viewCount ?? "0")}
+      )
+      on conflict (user_id, youtube_channel_id) do update set
+        title            = excluded.title,
+        handle           = excluded.handle,
+        description      = excluded.description,
+        thumbnail_url    = excluded.thumbnail_url,
+        subscriber_count = excluded.subscriber_count,
+        video_count      = excluded.video_count,
+        view_count       = excluded.view_count
+      returning
+        id, user_id, created_at, youtube_channel_id, title, handle, description,
+        thumbnail_url,
+        subscriber_count::float8 as subscriber_count,
+        video_count,
+        view_count::float8 as view_count,
+        access_type, analysis, analyzed_at, inspiration
+    `) as Record<string, unknown>[];
+    savedChannel = normalizeRow<ChannelsRow>(rows[0]);
+  } catch (channelErr) {
+    const message = channelErr instanceof Error ? channelErr.message : "Channel upsert failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   // Upsert videos
@@ -142,15 +160,48 @@ export async function POST(req: Request) {
     const videoInserts: VideoInsert[] = (videos as VideoInsert[]).map((v) => ({
       ...v, channel_id: savedChannel.id, user_id: user.id,
     }));
-    await supabase.from("channel_videos").upsert(videoInserts, { onConflict: "channel_id,youtube_video_id" });
+
+    // One statement instead of N round trips: the rows travel as a single JSON
+    // parameter and jsonb_to_recordset expands them server-side.
+    await getSql()`
+      insert into channel_videos
+        (channel_id, user_id, youtube_video_id, title, description, thumbnail_url,
+         view_count, like_count, comment_count, duration_seconds, published_at)
+      select
+        channel_id, user_id, youtube_video_id, title, description, thumbnail_url,
+        view_count, like_count, comment_count, duration_seconds, published_at
+      from jsonb_to_recordset(${JSON.stringify(videoInserts)}::jsonb) as x(
+        channel_id uuid, user_id uuid, youtube_video_id text, title text,
+        description text, thumbnail_url text, view_count bigint, like_count bigint,
+        comment_count bigint, duration_seconds int, published_at timestamptz
+      )
+      on conflict (channel_id, youtube_video_id) do update set
+        title            = excluded.title,
+        description      = excluded.description,
+        thumbnail_url    = excluded.thumbnail_url,
+        view_count       = excluded.view_count,
+        like_count       = excluded.like_count,
+        comment_count    = excluded.comment_count,
+        duration_seconds = excluded.duration_seconds,
+        published_at     = excluded.published_at
+    `;
   }
 
   // Fetch saved videos
-  const { data: savedVideos } = await supabase
-    .from("channel_videos")
-    .select("*")
-    .eq("channel_id", savedChannel!.id)
-    .order("view_count", { ascending: false });
+  const savedVideos = normalizeRows<ChannelVideosRow>(
+    (await getSql()`
+      select
+        id, channel_id, user_id, created_at, youtube_video_id, title, description,
+        thumbnail_url,
+        view_count::float8    as view_count,
+        like_count::float8    as like_count,
+        comment_count::float8 as comment_count,
+        duration_seconds, published_at, transcript, viral_moments
+      from channel_videos
+      where channel_id = ${savedChannel.id}
+      order by view_count desc
+    `) as Record<string, unknown>[]
+  );
 
   return NextResponse.json({ channel: savedChannel, videos: savedVideos ?? [] });
 }

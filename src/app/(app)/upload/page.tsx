@@ -10,7 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useEpisodes } from "@/lib/context/episode-context";
 import { useUser } from "@/lib/context/user-context";
-import { createClient } from "@/lib/supabase/client";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
 
@@ -18,7 +17,6 @@ type Phase = "idle" | "extracting" | "uploading" | "done" | "error";
 
 const VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm", "video/mpeg"]);
 const GROQ_LIMIT_BYTES = 25 * 1024 * 1024;
-const STORAGE_BUCKET = "episode-audio";
 
 function isVideoFile(file: File) {
   return VIDEO_TYPES.has(file.type) || /\.(mp4|mov|avi|mkv|webm|mpeg|mpg)$/i.test(file.name);
@@ -184,8 +182,9 @@ export default function UploadPage() {
     setPhase("uploading");
     setProgress(0);
 
-    const supabase = createClient();
-    const storagePath = `${user!.id}/${Date.now()}-${audioFile.name}`;
+    // The storage key is minted server-side by /api/upload/sign, so the client
+    // cannot write outside its own prefix.
+    let storagePath: string | null = null;
     let episodeId: string | null = null;
 
     try {
@@ -203,12 +202,35 @@ export default function UploadPage() {
 
       setProgress(10);
 
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(storagePath, audioFile);
+      const signRes = await fetch("/api/upload/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: audioFile.name,
+          contentType: audioFile.type || "application/octet-stream",
+        }),
+      });
 
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
+      if (!signRes.ok) {
+        throw new Error("Could not prepare the upload. Please try again.");
+      }
+
+      const signed = (await signRes.json()) as {
+        uploadUrl: string;
+        storagePath: string;
+      };
+      storagePath = signed.storagePath;
+
+      const uploadRes = await fetch(signed.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": audioFile.type || "application/octet-stream",
+        },
+        body: audioFile,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`Upload failed: ${uploadRes.status}`);
       }
 
       setProgress(40);
@@ -249,7 +271,12 @@ export default function UploadPage() {
       setPhase("done");
     } catch (err: unknown) {
       console.error(err);
-      supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      if (storagePath) {
+        void fetch(
+          `/api/upload/sign?path=${encodeURIComponent(storagePath)}`,
+          { method: "DELETE" }
+        );
+      }
       if (episodeId) {
         try { await deleteEpisode(episodeId); } catch { /* best-effort cleanup */ }
       }

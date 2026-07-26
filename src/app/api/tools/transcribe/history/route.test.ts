@@ -14,8 +14,8 @@ const {
   generateTitle: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getUser } }),
+vi.mock("@/lib/neon/auth", () => ({
+  getSessionUser: () => getUser(),
 }));
 vi.mock("@/lib/transcribe/history", () => ({
   listTranscriptions,
@@ -28,8 +28,8 @@ vi.mock("@/lib/transcribe/title", () => ({
 
 import { GET, POST, DELETE } from "./route";
 
-const authed = () => getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
-const anon = () => getUser.mockResolvedValue({ data: { user: null } });
+const authed = () => getUser.mockResolvedValue({ id: "u1", email: "u1@example.com" });
+const anon = () => getUser.mockResolvedValue(null);
 
 const postReq = (body: unknown) =>
   new Request("http://x", { method: "POST", body: JSON.stringify(body) });
@@ -53,7 +53,7 @@ describe("GET /api/tools/transcribe/history", () => {
     authed();
     listTranscriptions.mockResolvedValue([{ id: "a" }]);
     const res = await GET();
-    expect(listTranscriptions).toHaveBeenCalledWith(expect.anything(), "u1");
+    expect(listTranscriptions).toHaveBeenCalledWith("u1");
     expect(await res.json()).toEqual({ items: [{ id: "a" }] });
   });
 });
@@ -89,9 +89,7 @@ describe("POST /api/tools/transcribe/history", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: "row-1", title: "Charla con Ana" });
     expect(generateTitle).not.toHaveBeenCalled();
-    expect(saveTranscription).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
+    expect(saveTranscription).toHaveBeenCalledWith(expect.objectContaining({
         userId: "u1",
         title: "Charla con Ana",
         text: "audio uno. audio dos.",
@@ -109,9 +107,7 @@ describe("POST /api/tools/transcribe/history", () => {
     const res = await POST(postReq({ text: "texto sin titulo", fileCount: 3 }));
     expect(generateTitle).toHaveBeenCalledWith("texto sin titulo");
     expect(await res.json()).toEqual({ id: "row-2", title: "Título generado" });
-    expect(saveTranscription).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
+    expect(saveTranscription).toHaveBeenCalledWith(expect.objectContaining({
         title: "Título generado",
         filename: "Conversación (3 audios)",
         language: null,
@@ -153,7 +149,7 @@ describe("DELETE /api/tools/transcribe/history", () => {
     const res = await DELETE(
       new Request("http://x", { method: "DELETE", body: JSON.stringify({ id: "t1" }) }),
     );
-    expect(deleteTranscription).toHaveBeenCalledWith(expect.anything(), "t1", "u1");
+    expect(deleteTranscription).toHaveBeenCalledWith("t1", "u1");
     expect(res.status).toBe(200);
   });
 });

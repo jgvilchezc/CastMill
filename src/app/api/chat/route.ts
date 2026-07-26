@@ -5,8 +5,8 @@ import {
   type UIMessage,
 } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 import {
   generateEmbedding,
   searchSimilarDocuments,
@@ -78,14 +78,9 @@ async function getDocumentCounts(
   userId: string
 ): Promise<{ captions: number; comments: number; profile: number }> {
   try {
-    const supabase = createAdminClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
-      .from("rag_documents")
-      .select("source")
-      .eq("user_id", userId);
-
-    const rows = (data ?? []) as { source: string }[];
+    const rows = (await getSql()`
+      select source from rag_documents where user_id = ${userId}
+    `) as { source: string }[];
     return {
       captions: rows.filter((r) => r.source === "instagram_caption").length,
       comments: rows.filter((r) => r.source === "instagram_comment").length,
@@ -98,10 +93,7 @@ async function getDocumentCounts(
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return new Response("Unauthorized", { status: 401 });

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { normalizeRows } from "@/lib/neon/rows";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,51 +17,50 @@ export async function GET(req: NextRequest) {
   const pageSize = 20;
   const offset = (page - 1) * pageSize;
 
-  const admin = createAdminClient();
+  const sql = getSql();
 
-  const { data: authUsers } = await admin.auth.admin.listUsers({
-    page,
-    perPage: 200,
-  });
+  // Emails now live in the same database (neon_auth."user"), so this is a join
+  // instead of a separate auth-admin listUsers() call capped at 200 rows.
+  //
+  // Search and plan filtering also moved into the query. The Supabase version
+  // filtered by search AFTER pagination, so a match on page 3 was invisible
+  // unless you were already on page 3, and `total` ignored the search entirely.
+  const planFilter = plan && plan !== "all" ? plan : null;
+  const searchFilter = search ? `%${search}%` : null;
 
-  const emailMap: Record<string, string> = {};
-  (authUsers?.users ?? []).forEach((u) => {
-    if (u.email) emailMap[u.id] = u.email;
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (admin as any)
-    .from("profiles")
-    .select("id, name, plan, credits, episodes_used_this_month, billing_period_start, created_at, stripe_subscription_id", { count: "exact" });
-
-  if (plan && plan !== "all") {
-    query = query.eq("plan", plan as "free" | "starter" | "pro");
-  }
-
-  query = query
-    .order("created_at", { ascending: false })
-    .range(offset, offset + pageSize - 1);
-
-  const { data: profiles, count } = await query;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let results = ((profiles ?? []) as any[]).map((p) => ({
-    ...p,
-    email: emailMap[p.id] ?? null,
-  }));
-
-  if (search) {
-    const lower = search.toLowerCase();
-    results = results.filter(
-      (u: { email?: string | null; name?: string | null }) =>
-        u.email?.toLowerCase().includes(lower) ||
-        u.name?.toLowerCase().includes(lower)
-    );
-  }
+  const [rows, totals] = await Promise.all([
+    sql`
+      select
+        p.id, p.name, p.plan, p.credits, p.episodes_used_this_month,
+        p.billing_period_start, p.created_at, p.stripe_subscription_id,
+        u.email
+      from profiles p
+      left join neon_auth."user" u on u.id = p.id
+      where (${planFilter}::text is null or p.plan = ${planFilter})
+        and (
+          ${searchFilter}::text is null
+          or u.email ilike ${searchFilter}
+          or p.name ilike ${searchFilter}
+        )
+      order by p.created_at desc
+      limit ${pageSize} offset ${offset}
+    `,
+    sql`
+      select count(*)::int as total
+      from profiles p
+      left join neon_auth."user" u on u.id = p.id
+      where (${planFilter}::text is null or p.plan = ${planFilter})
+        and (
+          ${searchFilter}::text is null
+          or u.email ilike ${searchFilter}
+          or p.name ilike ${searchFilter}
+        )
+    `,
+  ]);
 
   return NextResponse.json({
-    users: results,
-    total: count ?? 0,
+    users: normalizeRows(rows as Record<string, unknown>[]),
+    total: (totals as { total: number }[])[0].total,
     page,
     pageSize,
   });

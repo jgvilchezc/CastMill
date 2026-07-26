@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getConnectedAccount, updateConnectedAccountMeta } from "@/lib/neon/queries";
 
 export async function POST() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: account } = await (supabase as any)
-    .from("connected_accounts")
-    .select("access_token, expires_at, platform_meta")
-    .eq("user_id", user.id)
-    .eq("platform", "instagram")
-    .single();
+  const account = await getConnectedAccount(user.id, "instagram");
 
   if (!account) {
     return NextResponse.json(
@@ -60,15 +52,7 @@ export async function POST() {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from("connected_accounts")
-    .update({
-      platform_meta: meta,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id)
-    .eq("platform", "instagram");
+  await updateConnectedAccountMeta(user.id, "instagram", meta);
 
   return NextResponse.json({ platform_meta: meta });
 }

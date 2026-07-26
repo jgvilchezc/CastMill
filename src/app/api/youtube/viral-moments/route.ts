@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { channelVideoId, transcript, title } = await req.json();
@@ -91,11 +91,10 @@ Return ONLY valid JSON, no markdown:
   }
 
   if (channelVideoId) {
-    await supabase
-      .from("channel_videos")
-      .update({ viral_moments: viralMoments })
-      .eq("id", channelVideoId)
-      .eq("user_id", user.id);
+    await getSql()`
+        update channel_videos set viral_moments = ${JSON.stringify(viralMoments)}::jsonb
+        where id = ${channelVideoId} and user_id = ${user.id}
+      `;
   }
 
   return NextResponse.json({ viralMoments });

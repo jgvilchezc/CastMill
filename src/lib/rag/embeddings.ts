@@ -1,6 +1,6 @@
 import { embed } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSql } from "@/lib/neon/db";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
@@ -32,21 +32,17 @@ export async function searchSimilarDocuments(
   userId: string,
   limit = 10
 ): Promise<MatchedDocument[]> {
-  const supabase = createAdminClient();
-
+  const sql = getSql();
   const embeddingStr = `[${queryEmbedding.join(",")}]`;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc("match_documents", {
-    query_embedding: embeddingStr,
-    filter_user_id: userId,
-    match_count: limit,
-  });
-
-  if (error) {
+  try {
+    const rows = await sql`
+      select id, source, source_id, content, metadata, similarity, pinned, title
+      from match_documents(${embeddingStr}::vector, ${userId}::uuid, ${limit})
+    `;
+    return rows as MatchedDocument[];
+  } catch (error) {
     console.error("[rag/embeddings] match_documents error:", error);
     return [];
   }
-
-  return (data ?? []) as MatchedDocument[];
 }

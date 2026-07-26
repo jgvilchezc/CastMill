@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/neon/auth";
 import { LayoutDashboard, Users, ExternalLink, ShieldAlert } from "lucide-react";
 
 export default async function AdminLayout({

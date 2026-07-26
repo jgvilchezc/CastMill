@@ -32,7 +32,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const oauthError = searchParams.get("error") === "oauth_failed";
 
-  async function handleOAuth(provider: "google" | "twitter") {
+  async function handleOAuth(provider: "google" | "github" | "vercel") {
     setOauthLoading(provider);
     try {
       await signInWithOAuth(provider);

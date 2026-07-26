@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getConnectedAccount } from "@/lib/neon/queries";
 
 export async function GET(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: account } = await (supabase as any)
-    .from("connected_accounts")
-    .select("access_token, expires_at")
-    .eq("user_id", user.id)
-    .eq("platform", "tiktok")
-    .single();
+  const account = await getConnectedAccount(user.id, "tiktok");
 
   if (!account) {
     return NextResponse.json(

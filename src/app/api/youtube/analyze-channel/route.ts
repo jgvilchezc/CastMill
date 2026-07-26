@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import type { ChannelsRow } from "@/lib/neon/types";
+import { normalizeRow, normalizeRows } from "@/lib/neon/rows";
+import { getSql } from "@/lib/neon/db";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -15,23 +15,41 @@ export async function POST(req: Request) {
   if (!channelId)
     return NextResponse.json({ error: "channelId required" }, { status: 400 });
 
-  const { data: channel } = await supabase
-    .from("channels")
-    .select("*")
-    .eq("id", channelId)
-    .eq("user_id", user.id)
-    .single();
+  const channelRows = (await getSql()`
+    select * from channels where id = ${channelId} and user_id = ${user.id}
+  `) as Record<string, unknown>[];
+  const channel = channelRows[0] ? normalizeRow<ChannelsRow>(channelRows[0]) : null;
   if (!channel)
     return NextResponse.json({ error: "Channel not found" }, { status: 404 });
 
-  const { data: videos } = await supabase
-    .from("channel_videos")
-    .select(
-      "title,view_count,like_count,comment_count,published_at,duration_seconds,thumbnail_url",
-    )
-    .eq("channel_id", channelId)
-    .order("view_count", { ascending: false })
-    .limit(20);
+  // view/like/comment counts are bigint: the pg driver hands those back as
+  // strings, so toLocaleString() below would silently skip thousand separators.
+  // published_at is timestamptz and arrives as a Date, which has no .split().
+  // The ::float8 casts and normalizeRows() restore the shapes this code expects.
+  const videos = normalizeRows<{
+    title: string;
+    view_count: number;
+    like_count: number;
+    comment_count: number;
+    published_at: string | null;
+    duration_seconds: number;
+    thumbnail_url: string | null;
+  }>(
+    (await getSql()`
+      select
+        title,
+        view_count::float8      as view_count,
+        like_count::float8      as like_count,
+        comment_count::float8   as comment_count,
+        published_at,
+        duration_seconds,
+        thumbnail_url
+      from channel_videos
+      where channel_id = ${channelId}
+      order by view_count desc
+      limit 20
+    `) as Record<string, unknown>[]
+  );
 
   const videosText = (videos ?? [])
     .map(
@@ -142,10 +160,11 @@ Provide a comprehensive channel analysis in this EXACT JSON format (no markdown,
     );
   }
 
-  await supabase
-    .from("channels")
-    .update({ analysis, analyzed_at: new Date().toISOString() })
-    .eq("id", channelId);
+  await getSql()`
+    update channels
+    set analysis = ${JSON.stringify(analysis)}::jsonb, analyzed_at = now()
+    where id = ${channelId} and user_id = ${user.id}
+  `;
 
   return NextResponse.json({ analysis });
 }

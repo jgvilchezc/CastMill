@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { getStripe, planFromPriceId } from "@/lib/stripe";
+import { getSql } from "@/lib/neon/db";
 import type Stripe from "stripe";
-
-function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -30,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   console.log("[webhook/stripe] Event received:", event.type);
 
-  const supabase = createAdminClient();
+  const sql = getSql();
 
   switch (event.type) {
     case "checkout.session.completed": {
@@ -84,22 +76,23 @@ export async function POST(req: NextRequest) {
         stripe_subscription_id: subscriptionId,
       };
 
-      const { data: existing } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userId)
-        .maybeSingle();
+      const existingRows = (await sql`
+        select id from profiles where id = ${userId}
+      `) as { id: string }[];
+      const existing = existingRows[0];
 
       if (existing) {
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update(profileData)
-          .eq("id", userId);
-
-        if (updateError) {
-          console.error("[webhook/stripe] Supabase update FAILED:", updateError);
-        } else {
+        try {
+          await sql`
+            update profiles set
+              plan                   = ${profileData.plan},
+              stripe_customer_id     = ${profileData.stripe_customer_id},
+              stripe_subscription_id = ${profileData.stripe_subscription_id}
+            where id = ${userId}
+          `;
           console.log("[webhook/stripe] checkout.session.completed SUCCESS (updated)", { userId, plan });
+        } catch (updateError) {
+          console.error("[webhook/stripe] profile update FAILED:", updateError);
         }
       } else {
         console.warn("[webhook/stripe] No profile row found, inserting:", userId);
@@ -114,19 +107,18 @@ export async function POST(req: NextRequest) {
           } catch { /* ignore */ }
         }
 
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            id: userId,
-            name: customerName,
-            credits: 10,
-            ...profileData,
-          });
-
-        if (insertError) {
-          console.error("[webhook/stripe] Profile insert FAILED:", insertError);
-        } else {
+        try {
+          await sql`
+            insert into profiles
+              (id, name, credits, plan, stripe_customer_id, stripe_subscription_id)
+            values (
+              ${userId}, ${customerName}, 10, ${profileData.plan},
+              ${profileData.stripe_customer_id}, ${profileData.stripe_subscription_id}
+            )
+          `;
           console.log("[webhook/stripe] checkout.session.completed SUCCESS (created)", { userId, plan });
+        } catch (insertError) {
+          console.error("[webhook/stripe] Profile insert FAILED:", insertError);
         }
       }
       break;
@@ -149,19 +141,15 @@ export async function POST(req: NextRequest) {
 
       const newPlan = isActive && plan ? plan : "free";
 
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ plan: newPlan })
-        .eq("id", userId);
-
-      if (updateError) {
-        console.error("[webhook/stripe] Supabase update FAILED:", updateError);
-      } else {
+      try {
+        await sql`update profiles set plan = ${newPlan} where id = ${userId}`;
         console.log("[webhook/stripe] subscription.updated SUCCESS", {
           userId,
           newPlan,
           status,
         });
+      } catch (updateError) {
+        console.error("[webhook/stripe] profile update FAILED:", updateError);
       }
       break;
     }
@@ -175,18 +163,15 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          plan: "free",
-          stripe_subscription_id: null,
-        })
-        .eq("id", userId);
-
-      if (updateError) {
-        console.error("[webhook/stripe] Supabase update FAILED:", updateError);
-      } else {
+      try {
+        await sql`
+          update profiles
+          set plan = 'free', stripe_subscription_id = null
+          where id = ${userId}
+        `;
         console.log("[webhook/stripe] subscription.deleted SUCCESS", { userId });
+      } catch (updateError) {
+        console.error("[webhook/stripe] profile update FAILED:", updateError);
       }
       break;
     }

@@ -1,14 +1,23 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
+import { createClient, isNeonConfigured } from "@/lib/neon/client";
+import type {
+  EpisodesRow,
+  TranscriptsRow,
+  GenerationsRow,
+} from "@/lib/neon/types";
 import type { GenerationParams } from "@/lib/generation-params";
 
-type EpisodeRow = Database["public"]["Tables"]["episodes"]["Row"];
-type TranscriptRow = Database["public"]["Tables"]["transcripts"]["Row"];
-type GenerationRow = Database["public"]["Tables"]["generations"]["Row"];
-type GenerationInsert = Database["public"]["Tables"]["generations"]["Insert"];
+type EpisodeRow = EpisodesRow;
+type TranscriptRow = TranscriptsRow;
+type GenerationRow = GenerationsRow;
+
+/** Columns supplied on insert; the rest carry database defaults. */
+type GenerationInsert = Pick<
+  GenerationsRow,
+  "episode_id" | "user_id" | "format" | "content" | "status"
+>;
 
 export type ContentFormat = "blog" | "tweet_thread" | "linkedin" | "newsletter" | "youtube_desc" | "thumbnail" | "chapters" | "quotes" | "show_notes";
 
@@ -98,7 +107,7 @@ interface EpisodeContextType {
 const EpisodeContext = createContext<EpisodeContextType | undefined>(undefined);
 
 export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const supabase = createClient();
+  const client = createClient();
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [transcripts, setTranscripts] = useState<Record<string, Transcript>>({});
@@ -106,7 +115,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(true);
 
   const loadEpisodes = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("episodes")
       .select("*")
       .eq("user_id", userId)
@@ -116,18 +125,18 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setEpisodes(data.map(rowToEpisode));
     }
     setIsLoadingEpisodes(false);
-  }, [supabase]);
+  }, [client]);
 
   useEffect(() => {
-    // If Supabase is not configured yet, skip DB load
-    if (!isSupabaseConfigured()) {
+    // If Neon is not configured yet, skip DB load
+    if (!isNeonConfigured()) {
       setIsLoadingEpisodes(false);
       return;
     }
 
     let userId: string | null = null;
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    client.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         userId = user.id;
         loadEpisodes(user.id);
@@ -136,7 +145,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       if (session?.user && session.user.id !== userId) {
         userId = session.user.id;
         loadEpisodes(session.user.id);
@@ -153,10 +162,10 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const addEpisode = async (ep: Omit<Episode, "id" | "date" | "generationCount">) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("episodes")
       .insert({
         user_id: user.id,
@@ -178,7 +187,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const deleteEpisode = async (id: string) => {
-    const { error } = await supabase.from("episodes").delete().eq("id", id);
+    const { error } = await client.from("episodes").delete().eq("id", id);
     if (error) throw new Error(error.message);
     setEpisodes(prev => prev.filter(e => e.id !== id));
     setTranscripts(prev => {
@@ -196,14 +205,14 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateTranscript = async (episodeId: string, text: string, segments: unknown = []) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) return;
 
     // Upsert transcript (one per episode)
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("transcripts")
       .upsert(
-        { episode_id: episodeId, user_id: user.id, text, segments: segments as Database["public"]["Tables"]["transcripts"]["Insert"]["segments"] },
+        { episode_id: episodeId, user_id: user.id, text, segments: segments as unknown as TranscriptsRow["segments"] },
         { onConflict: "episode_id" }
       )
       .select()
@@ -214,7 +223,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     // Mark episode as ready
-    await supabase
+    await client
       .from("episodes")
       .update({ status: "ready" })
       .eq("id", episodeId);
@@ -225,7 +234,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const generateContent = async (episodeId: string, format: ContentFormat, params?: GenerationParams) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) return;
 
     // Optimistic UI: mark as generating
@@ -241,7 +250,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let transcriptText = transcript?.text;
       let transcriptSegments = transcript?.segments;
       if (!transcriptSegments && !transcriptText) {
-        const { data } = await supabase
+        const { data } = await client
           .from("transcripts")
           .select("text, segments")
           .eq("episode_id", episodeId)
@@ -295,7 +304,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         status: "ready",
       };
 
-      const { data: saved } = await supabase
+      const { data: saved } = await client
         .from("generations")
         .upsert(insert, { onConflict: "episode_id,format" })
         .select()
@@ -307,7 +316,7 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...prev.filter(g => g.id !== tempId && !(g.episodeId === episodeId && g.format === format)),
       ]);
 
-      await supabase.from("episodes")
+      await client.from("episodes")
         .update({ generation_count: (episodes.find(e => e.id === episodeId)?.generationCount ?? 0) + 1 })
         .eq("id", episodeId);
 
@@ -322,10 +331,10 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateGeneration = async (episodeId: string, format: ContentFormat, content: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("generations")
       .upsert(
         {
@@ -349,13 +358,13 @@ export const EpisodeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const refreshEpisode = async (episodeId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) return;
 
     const [{ data: ep }, { data: trans }, { data: gens }] = await Promise.all([
-      supabase.from("episodes").select("*").eq("id", episodeId).single(),
-      supabase.from("transcripts").select("*").eq("episode_id", episodeId).maybeSingle(),
-      supabase.from("generations").select("*").eq("episode_id", episodeId).order("created_at", { ascending: false }),
+      client.from("episodes").select("*").eq("id", episodeId).single(),
+      client.from("transcripts").select("*").eq("episode_id", episodeId).maybeSingle(),
+      client.from("generations").select("*").eq("episode_id", episodeId).order("created_at", { ascending: false }),
     ]);
 
     if (ep) setEpisodes(prev => prev.map(e => e.id === episodeId ? rowToEpisode(ep) : e));

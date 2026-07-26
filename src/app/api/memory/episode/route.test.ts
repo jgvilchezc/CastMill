@@ -6,17 +6,12 @@ const { getUser, transcriptQuery, saveMemory } = vi.hoisted(() => ({
   saveMemory: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: { getUser },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          eq: () => ({ single: transcriptQuery }),
-        }),
-      }),
-    }),
-  }),
+vi.mock("@/lib/neon/auth", () => ({
+  getSessionUser: () => getUser(),
+}));
+// The route now runs SQL directly: getSql() returns the tagged-template fn.
+vi.mock("@/lib/neon/db", () => ({
+  getSql: () => transcriptQuery,
 }));
 vi.mock("@/lib/memory/store", () => ({ saveMemory }));
 
@@ -26,13 +21,13 @@ beforeEach(() => {
   getUser.mockReset();
   transcriptQuery.mockReset();
   saveMemory.mockReset();
-  getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+  getUser.mockResolvedValue({ id: "u1", email: "u1@example.com" });
   process.env.GOOGLE_GENERATIVE_AI_API_KEY = "k";
 });
 
 describe("POST /api/memory/episode", () => {
   it("401 without a user", async () => {
-    getUser.mockResolvedValue({ data: { user: null } });
+    getUser.mockResolvedValue(null);
     const res = await POST(
       new Request("http://x", { method: "POST", body: JSON.stringify({ episodeId: "e1" }) }),
     );
@@ -40,7 +35,7 @@ describe("POST /api/memory/episode", () => {
   });
 
   it("404 when transcript not found", async () => {
-    transcriptQuery.mockResolvedValue({ data: null, error: null });
+    transcriptQuery.mockResolvedValue([]);
     const res = await POST(
       new Request("http://x", { method: "POST", body: JSON.stringify({ episodeId: "e1" }) }),
     );
@@ -48,10 +43,9 @@ describe("POST /api/memory/episode", () => {
   });
 
   it("chunks the transcript and saves each chunk", async () => {
-    transcriptQuery.mockResolvedValue({
-      data: { text: `${"a".repeat(900)}\n\nshort tail` },
-      error: null,
-    });
+    transcriptQuery.mockResolvedValue([
+      { text: `${"a".repeat(900)}\n\nshort tail` },
+    ]);
     saveMemory.mockResolvedValue({ id: "x" });
     const res = await POST(
       new Request("http://x", { method: "POST", body: JSON.stringify({ episodeId: "e1", title: "Ep 1" }) }),

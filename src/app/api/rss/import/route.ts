@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 import { XMLParser } from 'fast-xml-parser';
 import { isValidPublicUrl, sanitizeString } from '@/lib/security/validate';
 
@@ -35,8 +36,7 @@ function getGuid(item: FeedItem): string {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -82,10 +82,9 @@ export async function POST(req: Request) {
 
     const items = rawItems.slice(0, Math.min(maxEpisodes, 20));
 
-    const { data: existingEpisodes } = await supabase
-      .from("episodes")
-      .select("title")
-      .eq("user_id", user.id);
+    const existingEpisodes = (await getSql()`
+      select title from episodes where user_id = ${user.id}
+    `) as { title: string }[];
 
     const existingTitles = new Set((existingEpisodes ?? []).map(e => e.title));
 
@@ -105,64 +104,45 @@ export async function POST(req: Request) {
         ? item.description.replace(/<[^>]*>/g, "").slice(0, 500)
         : "";
 
-      const { data: episode, error } = await supabase
-        .from("episodes")
-        .insert({
-          user_id: user.id,
-          title,
-          description,
-          duration,
-          topics: [],
-          guests: [],
-          status: "ready",
-          thumbnail_url: null,
-        })
-        .select()
-        .single();
-
-      if (error || !episode) {
+      let episode: { id: string };
+      try {
+        const rows = (await getSql()`
+          insert into episodes
+            (user_id, title, description, duration, topics, guests, status, thumbnail_url)
+          values (
+            ${user.id}, ${title}, ${description}, ${duration},
+            '{}', '{}', 'ready', null
+          )
+          returning id
+        `) as { id: string }[];
+        episode = rows[0];
+      } catch {
         skipped.push(title);
         continue;
       }
 
       if (description) {
-        await supabase
-          .from("transcripts")
-          .upsert(
-            { episode_id: episode.id, user_id: user.id, text: description, segments: [] },
-            { onConflict: "episode_id" }
-          );
+        await getSql()`
+          insert into transcripts (episode_id, user_id, text, segments)
+          values (${episode.id}, ${user.id}, ${description}, '[]'::jsonb)
+          on conflict (episode_id) do update set
+            text = excluded.text, segments = excluded.segments
+        `;
       }
 
       imported.push({ title, id: episode.id });
       existingTitles.add(title);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rssTable = (supabase as any).from("rss_feeds");
-
-    const { data: existingFeed } = await rssTable
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("feed_url", feedUrl)
-      .maybeSingle();
-
-    if (!existingFeed) {
-      await rssTable
-        .insert({
-          user_id: user.id,
-          feed_url: feedUrl,
-          last_synced_at: new Date().toISOString(),
-          episode_guids: items.map(getGuid),
-        });
-    } else {
-      await rssTable
-        .update({
-          last_synced_at: new Date().toISOString(),
-          episode_guids: items.map(getGuid),
-        })
-        .eq("id", existingFeed.id);
-    }
+    // (user_id, feed_url) is UNIQUE, so the old select-then-insert-or-update
+    // collapses into one upsert.
+    await getSql()`
+      insert into rss_feeds (user_id, feed_url, last_synced_at, episode_guids)
+      values (${user.id}, ${feedUrl}, now(), ${items.map(getGuid)})
+      on conflict (user_id, feed_url) do update set
+        last_synced_at = now(),
+        episode_guids  = excluded.episode_guids
+    `;
 
     return NextResponse.json({
       imported: imported.length,

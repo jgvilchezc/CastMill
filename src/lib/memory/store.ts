@@ -1,5 +1,6 @@
 import { generateEmbedding } from "@/lib/rag/embeddings";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSql } from "@/lib/neon/db";
+import { normalizeRows } from "@/lib/neon/rows";
 
 export type MemorySource =
   | "manual"
@@ -31,67 +32,65 @@ export interface SaveMemoryInput {
   pinned?: boolean;
 }
 
-const COLUMNS =
-  "id, source, source_id, title, content, metadata, pinned, created_at";
-
 export async function saveMemory(
   input: SaveMemoryInput,
 ): Promise<{ id: string }> {
   const embedding = await generateEmbedding(input.content);
-  const supabase = createAdminClient();
+  const sql = getSql();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("rag_documents")
-    .upsert(
-      {
-        user_id: input.userId,
-        source: input.source,
-        source_id: input.sourceId,
-        title: input.title ?? null,
-        content: input.content,
-        metadata: input.metadata ?? {},
-        pinned: input.pinned ?? false,
-        embedding: `[${embedding.join(",")}]`,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,source,source_id" },
+  const rows = (await sql`
+    insert into rag_documents
+      (user_id, source, source_id, title, content, metadata, pinned, embedding, updated_at)
+    values (
+      ${input.userId},
+      ${input.source},
+      ${input.sourceId},
+      ${input.title ?? null},
+      ${input.content},
+      ${JSON.stringify(input.metadata ?? {})}::jsonb,
+      ${input.pinned ?? false},
+      ${`[${embedding.join(",")}]`}::vector,
+      now()
     )
-    .select("id")
-    .single();
+    on conflict (user_id, source, source_id) do update set
+      title      = excluded.title,
+      content    = excluded.content,
+      metadata   = excluded.metadata,
+      pinned     = excluded.pinned,
+      embedding  = excluded.embedding,
+      updated_at = now()
+    returning id
+  `) as { id: string }[];
 
-  if (error) throw new Error(error.message);
-  return { id: data.id };
+  return { id: rows[0].id };
 }
 
 export async function listMemories(
   userId: string,
   opts?: { source?: string },
 ): Promise<MemoryRecord[]> {
-  const supabase = createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase as any)
-    .from("rag_documents")
-    .select(COLUMNS)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+  const sql = getSql();
 
-  if (opts?.source) query = query.eq("source", opts.source);
+  const rows = opts?.source
+    ? await sql`
+        select id, source, source_id, title, content, metadata, pinned, created_at
+        from rag_documents
+        where user_id = ${userId} and source = ${opts.source}
+        order by created_at desc
+      `
+    : await sql`
+        select id, source, source_id, title, content, metadata, pinned, created_at
+        from rag_documents
+        where user_id = ${userId}
+        order by created_at desc
+      `;
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []) as MemoryRecord[];
+  return normalizeRows<MemoryRecord>(rows as Record<string, unknown>[]);
 }
 
 export async function deleteMemory(id: string, userId: string): Promise<void> {
-  const supabase = createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
-    .from("rag_documents")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
-  if (error) throw new Error(error.message);
+  const sql = getSql();
+  await sql`delete from rag_documents where id = ${id} and user_id = ${userId}`;
 }
 
 export async function togglePin(
@@ -99,24 +98,19 @@ export async function togglePin(
   userId: string,
   pinned: boolean,
 ): Promise<void> {
-  const supabase = createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
-    .from("rag_documents")
-    .update({ pinned })
-    .eq("id", id)
-    .eq("user_id", userId);
-  if (error) throw new Error(error.message);
+  const sql = getSql();
+  await sql`
+    update rag_documents set pinned = ${pinned}
+    where id = ${id} and user_id = ${userId}
+  `;
 }
 
 export async function getPinned(userId: string): Promise<MemoryRecord[]> {
-  const supabase = createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("rag_documents")
-    .select(COLUMNS)
-    .eq("user_id", userId)
-    .eq("pinned", true);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as MemoryRecord[];
+  const sql = getSql();
+  const rows = await sql`
+    select id, source, source_id, title, content, metadata, pinned, created_at
+    from rag_documents
+    where user_id = ${userId} and pinned = true
+  `;
+  return normalizeRows<MemoryRecord>(rows as Record<string, unknown>[]);
 }

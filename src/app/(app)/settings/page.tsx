@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/neon/client";
 import { useUser } from "@/lib/context/user-context";
 import { PLANS } from "@/lib/plans";
 import { SettingsAccountsSkeleton } from "@/components/skeletons";

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSessionUser } from "@/lib/neon/auth";
 import type { GenerationParams } from '@/lib/generation-params';
 import { DEFAULT_PARAMS } from '@/lib/generation-params';
 import { parseJsonBody, sanitizeString } from '@/lib/security/validate';
@@ -154,8 +154,7 @@ function buildFormatInstructions(format: string, params: GenerationParams): stri
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

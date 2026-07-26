@@ -1,5 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getAuth, isNeonAuthConfigured } from "@/lib/neon/auth";
 import {
   checkRateLimit,
   getRouteLimit,
@@ -77,43 +77,13 @@ export async function proxy(request: NextRequest) {
   }
 
   // --- Session refresh & route protection ---
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // If Supabase env vars are not yet configured, allow all traffic through
-  if (
-    !supabaseUrl ||
-    !supabaseAnonKey ||
-    !supabaseUrl.startsWith("https://")
-  ) {
+  // If Neon Auth env vars are not yet configured, allow all traffic through
+  if (!isNeonAuthConfigured()) {
     const response = NextResponse.next({ request });
     addSecurityHeaders(response);
     return response;
   }
-
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
-      },
-    },
-  });
-
-  // Refresh session — do NOT remove this block
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const isAppRoute =
     pathname.startsWith("/dashboard") ||
@@ -124,23 +94,24 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/transcribe") ||
     pathname.startsWith("/memory");
 
-  if (isAppRoute && !user) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    addSecurityHeaders(supabaseResponse);
-    return NextResponse.redirect(loginUrl);
+  // Neon's middleware validates the session cookie, refreshes expired tokens and
+  // redirects to loginUrl when there is no session. It is applied ONLY to app
+  // routes: it has no publicRoutes option, so running it across the whole
+  // matcher would lock the landing page and the legal pages behind login.
+  if (isAppRoute) {
+    const response = await getAuth().middleware({ loginUrl: "/login" })(request);
+    addSecurityHeaders(response);
+    return response;
   }
 
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
-  if (isAuthRoute && user) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    addSecurityHeaders(supabaseResponse);
-    return NextResponse.redirect(dashboardUrl);
-  }
+  // NOTE: the old "signed-in user visiting /login is bounced to /dashboard"
+  // redirect used to live here. It needed a session read on a public route,
+  // which this middleware no longer performs. That redirect moves into the
+  // /login and /register pages as a server-side auth.getSession() check.
 
-  addSecurityHeaders(supabaseResponse);
-  return supabaseResponse;
+  const response = NextResponse.next({ request });
+  addSecurityHeaders(response);
+  return response;
 }
 
 export const config = {

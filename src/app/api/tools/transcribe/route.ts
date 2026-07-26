@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import {
   formatParagraphs,
@@ -119,10 +119,7 @@ export async function POST(req: Request) {
       ? glossaryRaw.trim().slice(0, MAX_GLOSSARY_CHARS)
       : "";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     const ip = getClientIp(req);
@@ -200,7 +197,7 @@ export async function POST(req: Request) {
   if (user && !skipHistory) {
     try {
       title = await generateTitle(text);
-      historyId = await saveTranscription(supabase, {
+      historyId = await saveTranscription({
         userId: user.id,
         title,
         text,

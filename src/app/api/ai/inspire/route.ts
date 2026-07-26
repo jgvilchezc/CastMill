@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 
 export const maxDuration = 60;
 
@@ -129,10 +130,7 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -208,25 +206,20 @@ export async function POST(req: Request) {
     }
 
     if (channelId) {
-      const { data: existingChannel } = await supabase
-        .from("channels")
-        .select("inspiration")
-        .eq("id", channelId)
-        .eq("user_id", user.id)
-        .single();
+      const channelRows = (await getSql()`
+        select inspiration from channels
+        where id = ${channelId} and user_id = ${user.id}
+      `) as { inspiration: Record<string, unknown> | null }[];
 
-      const existingInspiration = (existingChannel?.inspiration as Record<string, unknown>) ?? {};
+      const merged = {
+        ...(channelRows[0]?.inspiration ?? {}),
+        [mode]: result[mode],
+      };
 
-      await supabase
-        .from("channels")
-        .update({
-          inspiration: {
-            ...existingInspiration,
-            [mode]: result[mode],
-          },
-        })
-        .eq("id", channelId)
-        .eq("user_id", user.id);
+      await getSql()`
+        update channels set inspiration = ${JSON.stringify(merged)}::jsonb
+        where id = ${channelId} and user_id = ${user.id}
+      `;
     }
 
     return NextResponse.json({ mode, ...result });

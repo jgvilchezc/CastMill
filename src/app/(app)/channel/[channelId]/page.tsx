@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/neon/client"
 import { ChannelDashboard } from "@/components/channel/ChannelDashboard"
 import { ChannelDashboardSkeleton } from "@/components/skeletons"
 

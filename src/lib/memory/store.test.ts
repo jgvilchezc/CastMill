@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const fromMock = vi.fn();
+const sqlMock = vi.fn();
 const generateEmbedding = vi.fn();
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ from: fromMock }),
+vi.mock("@/lib/neon/db", () => ({
+  getSql: () => sqlMock,
 }));
 vi.mock("@/lib/rag/embeddings", () => ({
   generateEmbedding: (t: string) => generateEmbedding(t),
@@ -18,27 +18,28 @@ import {
   getPinned,
 } from "./store";
 
-/** Chainable Supabase query-builder mock that resolves to `result`. */
-function queryReturning(result: { data: unknown; error: unknown }) {
-  const q: Record<string, unknown> = {};
-  for (const m of ["upsert", "update", "delete", "select", "eq", "order"]) {
-    q[m] = vi.fn(() => q);
-  }
-  q.single = vi.fn(() => Promise.resolve(result));
-  q.then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
+/**
+ * sql`...${a}...` arrives as (strings, ...values). Assertions target the SQL
+ * text and the bound params — the tagged-template equivalent of the old
+ * query-builder assertions.
+ */
+function lastCall() {
+  const [strings, ...values] = sqlMock.mock.calls.at(-1) as [
+    TemplateStringsArray,
+    ...unknown[],
+  ];
+  return { text: strings.join("?").replace(/\s+/g, " ").trim(), values };
 }
 
 beforeEach(() => {
-  fromMock.mockReset();
+  sqlMock.mockReset();
   generateEmbedding.mockReset();
   generateEmbedding.mockResolvedValue([0.1, 0.2, 0.3]);
 });
 
 describe("saveMemory", () => {
   it("embeds content and upserts, returning the id", async () => {
-    const q = queryReturning({ data: { id: "mem_1" }, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue([{ id: "mem_1" }]);
 
     const res = await saveMemory({
       userId: "u1",
@@ -49,24 +50,20 @@ describe("saveMemory", () => {
     });
 
     expect(generateEmbedding).toHaveBeenCalledWith("my tone is direct");
-    expect(fromMock).toHaveBeenCalledWith("rag_documents");
-    expect(q.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: "u1",
-        source: "manual",
-        source_id: "s1",
-        pinned: true,
-        embedding: "[0.1,0.2,0.3]",
-      }),
-      { onConflict: "user_id,source,source_id" },
-    );
+
+    const { text, values } = lastCall();
+    expect(text).toContain("insert into rag_documents");
+    expect(text).toContain("on conflict (user_id, source, source_id) do update");
+    expect(values).toContain("u1");
+    expect(values).toContain("manual");
+    expect(values).toContain("s1");
+    expect(values).toContain(true);
+    expect(values).toContain("[0.1,0.2,0.3]");
     expect(res).toEqual({ id: "mem_1" });
   });
 
-  it("throws on supabase error", async () => {
-    fromMock.mockReturnValue(
-      queryReturning({ data: null, error: { message: "boom" } }),
-    );
+  it("propagates a database error", async () => {
+    sqlMock.mockRejectedValue(new Error("boom"));
     await expect(
       saveMemory({ userId: "u1", source: "manual", sourceId: "s1", content: "x" }),
     ).rejects.toThrow("boom");
@@ -76,53 +73,64 @@ describe("saveMemory", () => {
 describe("listMemories", () => {
   it("filters by user and orders by created_at", async () => {
     const rows = [{ id: "a" }, { id: "b" }];
-    const q = queryReturning({ data: rows, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue(rows);
 
     const res = await listMemories("u1");
-    expect(q.eq).toHaveBeenCalledWith("user_id", "u1");
-    expect(q.order).toHaveBeenCalledWith("created_at", { ascending: false });
+
+    const { text, values } = lastCall();
+    expect(text).toContain("where user_id = ?");
+    expect(text).toContain("order by created_at desc");
+    expect(values).toEqual(["u1"]);
     expect(res).toEqual(rows);
   });
 
   it("adds a source filter when provided", async () => {
-    const q = queryReturning({ data: [], error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue([]);
+
     await listMemories("u1", { source: "manual" });
-    expect(q.eq).toHaveBeenCalledWith("source", "manual");
+
+    const { text, values } = lastCall();
+    expect(text).toContain("where user_id = ? and source = ?");
+    expect(values).toEqual(["u1", "manual"]);
   });
 });
 
 describe("deleteMemory", () => {
   it("scopes delete by id and user", async () => {
-    const q = queryReturning({ data: null, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue([]);
+
     await deleteMemory("mem_1", "u1");
-    expect(q.delete).toHaveBeenCalled();
-    expect(q.eq).toHaveBeenCalledWith("id", "mem_1");
-    expect(q.eq).toHaveBeenCalledWith("user_id", "u1");
+
+    const { text, values } = lastCall();
+    expect(text).toContain("delete from rag_documents");
+    expect(text).toContain("where id = ? and user_id = ?");
+    expect(values).toEqual(["mem_1", "u1"]);
   });
 });
 
 describe("togglePin", () => {
   it("updates pinned scoped by id and user", async () => {
-    const q = queryReturning({ data: null, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue([]);
+
     await togglePin("mem_1", "u1", true);
-    expect(q.update).toHaveBeenCalledWith({ pinned: true });
-    expect(q.eq).toHaveBeenCalledWith("id", "mem_1");
-    expect(q.eq).toHaveBeenCalledWith("user_id", "u1");
+
+    const { text, values } = lastCall();
+    expect(text).toContain("update rag_documents set pinned = ?");
+    expect(text).toContain("where id = ? and user_id = ?");
+    expect(values).toEqual([true, "mem_1", "u1"]);
   });
 });
 
 describe("getPinned", () => {
   it("returns only pinned rows for the user", async () => {
     const rows = [{ id: "p1", pinned: true }];
-    const q = queryReturning({ data: rows, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue(rows);
+
     const res = await getPinned("u1");
-    expect(q.eq).toHaveBeenCalledWith("pinned", true);
-    expect(q.eq).toHaveBeenCalledWith("user_id", "u1");
+
+    const { text, values } = lastCall();
+    expect(text).toContain("where user_id = ? and pinned = true");
+    expect(values).toEqual(["u1"]);
     expect(res).toEqual(rows);
   });
 });

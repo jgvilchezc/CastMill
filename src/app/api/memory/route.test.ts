@@ -11,15 +11,15 @@ const { getUser, store } = vi.hoisted(() => {
   return { getUser, store };
 });
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getUser } }),
+vi.mock("@/lib/neon/auth", () => ({
+  getSessionUser: () => getUser(),
 }));
 vi.mock("@/lib/memory/store", () => store);
 
 import { GET, POST, PATCH, DELETE } from "./route";
 
-const authed = () => getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
-const anon = () => getUser.mockResolvedValue({ data: { user: null } });
+const authed = () => getUser.mockResolvedValue({ id: "u1", email: "u1@example.com" });
+const anon = () => getUser.mockResolvedValue(null);
 
 beforeEach(() => {
   getUser.mockReset();

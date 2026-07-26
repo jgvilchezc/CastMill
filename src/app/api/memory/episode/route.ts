@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 import { saveMemory } from "@/lib/memory/store";
 import { chunkText } from "@/lib/memory/chunk";
 
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -28,13 +26,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: transcript } = await (supabase as any)
-    .from("transcripts")
-    .select("text")
-    .eq("episode_id", body.episodeId)
-    .eq("user_id", user.id)
-    .single();
+  const transcriptRows = (await getSql()`
+    select text from transcripts
+    where episode_id = ${body.episodeId} and user_id = ${user.id}
+  `) as { text: string }[];
+  const transcript = transcriptRows[0] ?? null;
 
   if (!transcript?.text) {
     return NextResponse.json({ error: "Transcript not found" }, { status: 404 });

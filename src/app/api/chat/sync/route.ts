@@ -1,29 +1,23 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 import { ingestInstagramData } from "@/lib/rag/ingest";
 
 export const maxDuration = 120;
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const admin = createAdminClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (admin as any)
-      .from("rag_documents")
-      .select("source, updated_at")
-      .eq("user_id", user.id);
-
-    const rows = (data ?? []) as { source: string; updated_at: string }[];
+    const rows = (await getSql()`
+      select source, updated_at::text as updated_at
+      from rag_documents
+      where user_id = ${user.id}
+    `) as { source: string; updated_at: string }[];
 
     if (rows.length === 0) {
       return NextResponse.json({ synced: false });
@@ -49,10 +43,7 @@ export async function GET() {
 }
 
 export async function POST() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

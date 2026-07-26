@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { getProfile } from "@/lib/neon/queries";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("id", user.id)
-    .single();
+  const profile = await getProfile(user.id);
 
   if (!profile || profile.plan === "free") {
     return NextResponse.json(
@@ -51,17 +46,12 @@ export async function POST(req: Request) {
     timedTranscript = transcript;
   }
 
-  const { data: episode, error: episodeError } = await supabase
-    .from("episodes")
-    .select("id, viral_moments")
-    .eq("id", episodeId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (episodeError) {
-    console.error("detect-moments episode query error:", episodeError.message);
-    return NextResponse.json({ error: episodeError.message }, { status: 500 });
-  }
+  const episodeRows = (await getSql()`
+    select id, viral_moments
+    from episodes
+    where id = ${episodeId} and user_id = ${user.id}
+  `) as { id: string; viral_moments: unknown }[];
+  const episode = episodeRows[0] ?? null;
 
   if (!episode) {
     return NextResponse.json({ error: "Episode not found" }, { status: 404 });
@@ -241,13 +231,16 @@ Return ONLY valid JSON with no markdown:
     );
   }
 
-  const { error: saveError } = await supabase
-    .from("episodes")
-    .update({ viral_moments: moments })
-    .eq("id", episodeId);
-
-  if (saveError) {
-    console.error("detect-moments: failed to persist viral_moments:", saveError.message);
+  try {
+    await getSql()`
+      update episodes set viral_moments = ${JSON.stringify(moments)}::jsonb
+      where id = ${episodeId} and user_id = ${user.id}
+    `;
+  } catch (saveError) {
+    console.error(
+      "detect-moments: failed to persist viral_moments:",
+      saveError instanceof Error ? saveError.message : saveError
+    );
     return NextResponse.json(
       { error: "Moments detected but failed to save — please try again" },
       { status: 500 }

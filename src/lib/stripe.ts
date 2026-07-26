@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { getSql } from "@/lib/neon/db";
 
 let _stripe: Stripe | null = null;
 
@@ -43,29 +43,20 @@ export function planFromPriceId(priceId: string): PlanId | null {
   return null;
 }
 
-function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
-
 async function getOrCreateCustomer(
   userId: string,
   email: string,
   name?: string | null
 ): Promise<string> {
-  const supabase = createAdminClient();
+  const sql = getSql();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("stripe_customer_id")
-    .eq("id", userId)
-    .single();
+  const rows = (await sql`
+    select stripe_customer_id from profiles where id = ${userId}
+  `) as { stripe_customer_id: string | null }[];
 
-  if (profile?.stripe_customer_id) {
-    return profile.stripe_customer_id;
+  const existing = rows[0]?.stripe_customer_id;
+  if (existing) {
+    return existing;
   }
 
   const customer = await getStripe().customers.create({
@@ -74,10 +65,9 @@ async function getOrCreateCustomer(
     metadata: { user_id: userId },
   });
 
-  await supabase
-    .from("profiles")
-    .update({ stripe_customer_id: customer.id })
-    .eq("id", userId);
+  await sql`
+    update profiles set stripe_customer_id = ${customer.id} where id = ${userId}
+  `;
 
   return customer.id;
 }

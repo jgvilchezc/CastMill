@@ -1,20 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const fromMock = vi.fn();
+/**
+ * Captures tagged-template calls: sql`...${a}...${b}` arrives as
+ * (strings, ...values). Assertions target the SQL text and the bound params,
+ * which is the tagged-template equivalent of the old query-builder assertions.
+ */
+const sqlMock = vi.fn();
 
-function makeClient() {
-  return { from: fromMock };
-}
+vi.mock("@/lib/neon/db", () => ({
+  getSql: () => sqlMock,
+}));
 
-/** Chainable Supabase query-builder mock resolving to `result`. */
-function queryReturning(result: { data: unknown; error: unknown }) {
-  const q: Record<string, unknown> = {};
-  for (const m of ["insert", "delete", "select", "eq", "order", "limit"]) {
-    q[m] = vi.fn(() => q);
-  }
-  q.single = vi.fn(() => Promise.resolve(result));
-  q.then = (resolve: (v: unknown) => unknown) => resolve(result);
-  return q;
+function lastCall() {
+  const [strings, ...values] = sqlMock.mock.calls.at(-1) as [
+    TemplateStringsArray,
+    ...unknown[],
+  ];
+  return { text: strings.join("?").replace(/\s+/g, " ").trim(), values };
 }
 
 import {
@@ -24,15 +26,14 @@ import {
 } from "./history";
 
 beforeEach(() => {
-  fromMock.mockReset();
+  sqlMock.mockReset();
 });
 
 describe("saveTranscription", () => {
   it("inserts the row and returns the new id", async () => {
-    const q = queryReturning({ data: { id: "t1" }, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue([{ id: "t1" }]);
 
-    const id = await saveTranscription(makeClient() as never, {
+    const id = await saveTranscription({
       userId: "u1",
       title: "Reunión",
       text: "contenido",
@@ -42,24 +43,24 @@ describe("saveTranscription", () => {
       provider: "groq",
     });
 
-    expect(fromMock).toHaveBeenCalledWith("transcriptions");
-    expect(q.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: "u1",
-        title: "Reunión",
-        text: "contenido",
-        language: "es",
-        provider: "groq",
-      }),
-    );
+    const { text, values } = lastCall();
+    expect(text).toContain("insert into transcriptions");
+    expect(text).toContain("returning id");
+    expect(values).toEqual([
+      "u1",
+      "Reunión",
+      "contenido",
+      "es",
+      12.5,
+      "audio.m4a",
+      "groq",
+    ]);
     expect(id).toBe("t1");
   });
 
   it("returns null when insert errors", async () => {
-    fromMock.mockReturnValue(
-      queryReturning({ data: null, error: { message: "boom" } }),
-    );
-    const id = await saveTranscription(makeClient() as never, {
+    sqlMock.mockRejectedValue(new Error("boom"));
+    const id = await saveTranscription({
       userId: "u1",
       title: "x",
       text: "y",
@@ -74,25 +75,28 @@ describe("saveTranscription", () => {
 
 describe("listTranscriptions", () => {
   it("scopes by user, orders desc, limits 50", async () => {
-    const rows = [{ id: "a" }];
-    const q = queryReturning({ data: rows, error: null });
-    fromMock.mockReturnValue(q);
+    sqlMock.mockResolvedValue([{ id: "a" }]);
 
-    const items = await listTranscriptions(makeClient() as never, "u1");
-    expect(q.eq).toHaveBeenCalledWith("user_id", "u1");
-    expect(q.order).toHaveBeenCalledWith("created_at", { ascending: false });
-    expect(q.limit).toHaveBeenCalledWith(50);
-    expect(items).toEqual(rows);
+    const items = await listTranscriptions("u1");
+
+    const { text, values } = lastCall();
+    expect(text).toContain("where user_id = ?");
+    expect(text).toContain("order by created_at desc");
+    expect(text).toContain("limit ?");
+    expect(values).toEqual(["u1", 50]);
+    expect(items).toEqual([{ id: "a" }]);
   });
 });
 
 describe("deleteTranscription", () => {
   it("scopes delete by id and user", async () => {
-    const q = queryReturning({ data: null, error: null });
-    fromMock.mockReturnValue(q);
-    await deleteTranscription(makeClient() as never, "t1", "u1");
-    expect(q.delete).toHaveBeenCalled();
-    expect(q.eq).toHaveBeenCalledWith("id", "t1");
-    expect(q.eq).toHaveBeenCalledWith("user_id", "u1");
+    sqlMock.mockResolvedValue([]);
+
+    await deleteTranscription("t1", "u1");
+
+    const { text, values } = lastCall();
+    expect(text).toContain("delete from transcriptions");
+    expect(text).toContain("where id = ? and user_id = ?");
+    expect(values).toEqual(["t1", "u1"]);
   });
 });

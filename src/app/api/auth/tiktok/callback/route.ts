@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/neon/auth";
+import { upsertConnectedAccount } from "@/lib/neon/queries";
 import { isValidUUID } from "@/lib/security/validate";
 import { cookies } from "next/headers";
 
@@ -34,8 +35,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${appUrl}/settings?error=tiktok_invalid_state`);
   }
 
-  const supabaseCheck = await createClient();
-  const { data: { user: sessionUser } } = await supabaseCheck.auth.getUser();
+  const sessionUser = await getSessionUser();
   if (!sessionUser || sessionUser.id !== userId) {
     return NextResponse.redirect(`${appUrl}/settings?error=tiktok_session_mismatch`);
   }
@@ -120,24 +120,18 @@ export async function GET(req: Request) {
     };
   }
 
-  const supabase = await createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("connected_accounts").upsert(
-    {
-      user_id: userId,
-      platform: "tiktok",
-      access_token,
-      refresh_token: refresh_token ?? null,
-      expires_at: expires_in
-        ? new Date(Date.now() + expires_in * 1000).toISOString()
-        : null,
-      platform_user_id: platformUserId ?? null,
-      platform_username: platformUsername,
-      platform_meta: platformMeta,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,platform" }
-  );
+  await upsertConnectedAccount({
+    userId,
+    platform: "tiktok",
+    accessToken: access_token,
+    refreshToken: refresh_token ?? null,
+    expiresAt: expires_in
+      ? new Date(Date.now() + expires_in * 1000).toISOString()
+      : null,
+    platformUserId: platformUserId ?? null,
+    platformUsername,
+    platformMeta,
+  });
 
   return NextResponse.redirect(`${appUrl}/settings?connected=tiktok`);
 }

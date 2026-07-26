@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { normalizeRows } from "@/lib/neon/rows";
 import { PLANS } from "@/lib/plans";
 
 export async function GET() {
@@ -9,45 +11,54 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const admin = createAdminClient();
+  const sql = getSql();
 
-  const [
-    { count: totalUsers },
-    { data: planCounts },
-    { count: totalEpisodes },
-    { data: activeUsersData },
-    { data: recentUsers },
-  ] = await Promise.all([
-    admin.from("profiles").select("*", { count: "exact", head: true }),
-    admin.from("profiles").select("plan"),
-    admin.from("episodes").select("*", { count: "exact", head: true }),
-    admin
-      .from("profiles")
-      .select("id")
-      .gt("episodes_used_this_month", 0),
-    admin
-      .from("profiles")
-      .select("id, name, created_at, plan")
-      .order("created_at", { ascending: false })
-      .limit(5),
+  // The five separate Supabase reads collapse into two round trips: the
+  // aggregate counts, and the recent-users list.
+  const [aggregates, recentUsers] = await Promise.all([
+    sql`
+      select
+        (select count(*)::int from profiles)                         as total_users,
+        (select count(*)::int from episodes)                         as total_episodes,
+        (select count(*)::int from profiles
+           where episodes_used_this_month > 0)                       as active_users,
+        (select count(*)::int from profiles where plan = 'free')     as free_count,
+        (select count(*)::int from profiles where plan = 'starter')  as starter_count,
+        (select count(*)::int from profiles where plan = 'pro')      as pro_count
+    `,
+    sql`
+      select id, name, created_at, plan
+      from profiles
+      order by created_at desc
+      limit 5
+    `,
   ]);
 
-  const planDistribution = { free: 0, starter: 0, pro: 0 };
-  (planCounts ?? []).forEach((p) => {
-    if (p.plan in planDistribution)
-      (planDistribution as Record<string, number>)[p.plan]++;
-  });
+  const a = (aggregates as {
+    total_users: number;
+    total_episodes: number;
+    active_users: number;
+    free_count: number;
+    starter_count: number;
+    pro_count: number;
+  }[])[0];
+
+  const planDistribution = {
+    free: a.free_count,
+    starter: a.starter_count,
+    pro: a.pro_count,
+  };
 
   const estimatedRevenue =
     planDistribution.starter * PLANS.starter.monthlyPrice +
     planDistribution.pro * PLANS.pro.monthlyPrice;
 
   return NextResponse.json({
-    totalUsers: totalUsers ?? 0,
+    totalUsers: a.total_users,
     planDistribution,
-    totalEpisodes: totalEpisodes ?? 0,
-    activeUsersThisMonth: activeUsersData?.length ?? 0,
+    totalEpisodes: a.total_episodes,
+    activeUsersThisMonth: a.active_users,
     estimatedRevenue,
-    recentUsers: recentUsers ?? [],
+    recentUsers: normalizeRows(recentUsers as Record<string, unknown>[]),
   });
 }

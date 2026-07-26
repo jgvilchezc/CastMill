@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/neon/client";
 import { useUser } from "@/lib/context/user-context";
 import { PLANS } from "@/lib/plans";
 import {

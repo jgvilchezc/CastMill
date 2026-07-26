@@ -1,4 +1,6 @@
-import { requireAdmin, createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
+import { normalizeRows } from "@/lib/neon/rows";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PLANS } from "@/lib/plans";
@@ -6,52 +8,65 @@ import type { PlanId } from "@/lib/plans";
 import { Users, Zap, Film, DollarSign, TrendingUp, ArrowRight } from "lucide-react";
 
 async function getStats() {
-  const admin = createAdminClient();
+  const sql = getSql();
 
-  const [
-    { count: totalUsers },
-    { data: planCounts },
-    { count: totalEpisodes },
-    { data: activeUsersData },
-    { data: recentProfiles },
-  ] = await Promise.all([
-    admin.from("profiles").select("*", { count: "exact", head: true }),
-    admin.from("profiles").select("plan"),
-    admin.from("episodes").select("*", { count: "exact", head: true }),
-    admin.from("profiles").select("id").gt("episodes_used_this_month", 0),
-    admin
-      .from("profiles")
-      .select("id, name, plan, created_at")
-      .order("created_at", { ascending: false })
-      .limit(6),
+  // Emails come from the join now — neon_auth."user" lives in this database, so
+  // the old listUsers({ perPage: 200 }) call (and its 200-user ceiling) is gone.
+  const [aggregates, recentProfiles] = await Promise.all([
+    sql`
+      select
+        (select count(*)::int from profiles)                        as total_users,
+        (select count(*)::int from episodes)                        as total_episodes,
+        (select count(*)::int from profiles
+           where episodes_used_this_month > 0)                      as active_users,
+        (select count(*)::int from profiles where plan = 'free')    as free_count,
+        (select count(*)::int from profiles where plan = 'starter') as starter_count,
+        (select count(*)::int from profiles where plan = 'pro')     as pro_count
+    `,
+    sql`
+      select p.id, p.name, p.plan, p.created_at, u.email
+      from profiles p
+      left join neon_auth."user" u on u.id = p.id
+      order by p.created_at desc
+      limit 6
+    `,
   ]);
 
-  const { data: authUsers } = await admin.auth.admin.listUsers({ perPage: 200 });
-  const emailMap: Record<string, string> = {};
-  (authUsers?.users ?? []).forEach((u) => {
-    if (u.email) emailMap[u.id] = u.email;
-  });
+  const a = (aggregates as {
+    total_users: number;
+    total_episodes: number;
+    active_users: number;
+    free_count: number;
+    starter_count: number;
+    pro_count: number;
+  }[])[0];
 
-  const planDistribution = { free: 0, starter: 0, pro: 0 };
-  (planCounts ?? []).forEach((p) => {
-    if (p.plan in planDistribution)
-      (planDistribution as Record<string, number>)[p.plan]++;
-  });
+  const totalUsers = a.total_users;
+  const totalEpisodes = a.total_episodes;
+
+  const planDistribution = {
+    free: a.free_count,
+    starter: a.starter_count,
+    pro: a.pro_count,
+  };
 
   const estimatedRevenue =
     planDistribution.starter * PLANS.starter.monthlyPrice +
     planDistribution.pro * PLANS.pro.monthlyPrice;
 
-  const recentUsers = (recentProfiles ?? []).map((p) => ({
-    ...p,
-    email: emailMap[p.id] ?? null,
-  }));
+  const recentUsers = normalizeRows<{
+    id: string;
+    name: string | null;
+    plan: PlanId;
+    created_at: string;
+    email: string | null;
+  }>(recentProfiles as Record<string, unknown>[]);
 
   return {
-    totalUsers: totalUsers ?? 0,
+    totalUsers,
     planDistribution,
-    totalEpisodes: totalEpisodes ?? 0,
-    activeUsersThisMonth: activeUsersData?.length ?? 0,
+    totalEpisodes,
+    activeUsersThisMonth: a.active_users,
     estimatedRevenue,
     recentUsers,
   };

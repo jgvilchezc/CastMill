@@ -7,15 +7,20 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
+import { createClient, isNeonConfigured } from "@/lib/neon/client";
+import type { ProfilesRow, VoiceProfilesRow } from "@/lib/neon/types";
 import { logout as serverLogout } from "@/app/actions/auth";
 import { PLANS, canUseFormat as planCanUseFormat } from "@/lib/plans";
 import type { PlanId, ContentFormat } from "@/lib/plans";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-type VoiceProfile = Database["public"]["Tables"]["voice_profiles"]["Row"];
+type Profile = ProfilesRow;
+type VoiceProfile = VoiceProfilesRow;
+
+/**
+ * Shape the Neon Data API client hands back. Better Auth exposes name/image
+ * directly — there is no Supabase-style `user_metadata` bag.
+ */
+type AuthUser = { id: string; email?: string; name?: string | null; image?: string | null };
 
 interface User {
   id: string;
@@ -53,17 +58,17 @@ function isNewBillingPeriod(billingPeriodStart: string): boolean {
 }
 
 function mapProfileToUser(
-  supabaseUser: SupabaseUser,
+  authUser: AuthUser,
   profile: Profile | null,
 ): User {
   return {
-    id: supabaseUser.id,
-    name: profile?.name ?? supabaseUser.user_metadata?.full_name ?? null,
-    email: supabaseUser.email,
+    id: authUser.id,
+    name: profile?.name ?? authUser.name ?? null,
+    email: authUser.email,
     plan: (profile?.plan ?? "free") as PlanId,
     credits: profile?.credits ?? 10,
     avatarUrl:
-      profile?.avatar_url ?? supabaseUser.user_metadata?.avatar_url ?? null,
+      profile?.avatar_url ?? authUser.image ?? null,
     episodesUsedThisMonth: profile?.episodes_used_this_month ?? 0,
     billingPeriodStart:
       profile?.billing_period_start ?? new Date().toISOString().split("T")[0],
@@ -75,17 +80,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [voiceProfile, setVoiceProfile] = useState<VoiceProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured());
+  const [isLoading, setIsLoading] = useState(() => isNeonConfigured());
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
+    if (!isNeonConfigured()) {
       return;
     }
 
-    const supabase = createClient();
+    const client = createClient();
 
-    async function loadUser(supabaseUser: SupabaseUser | null) {
-      if (!supabaseUser) {
+    async function loadUser(authUser: AuthUser | null) {
+      if (!authUser) {
         setUser(null);
         setVoiceProfile(null);
         setIsLoading(false);
@@ -93,44 +98,44 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const [{ data: profile }, { data: vp }] = await Promise.all([
-        supabase
+        client
           .from("profiles")
           .select("*")
-          .eq("id", supabaseUser.id)
+          .eq("id", authUser.id)
           .single(),
-        supabase
+        client
           .from("voice_profiles")
           .select("*")
-          .eq("user_id", supabaseUser.id)
+          .eq("user_id", authUser.id)
           .maybeSingle(),
       ]);
 
       if (profile && !profile.name) {
-        const authName = supabaseUser.user_metadata?.full_name ?? null;
-        const authAvatar = supabaseUser.user_metadata?.avatar_url ?? null;
+        const authName = authUser.name ?? null;
+        const authAvatar = authUser.image ?? null;
         const patches: Record<string, unknown> = {};
         if (authName) patches.name = authName;
         if (authAvatar) patches.avatar_url = authAvatar;
         if (profile.credits === 0) patches.credits = 10;
         if (Object.keys(patches).length > 0) {
-          await supabase
+          await client
             .from("profiles")
             .update(patches)
-            .eq("id", supabaseUser.id);
+            .eq("id", authUser.id);
           Object.assign(profile, patches);
         }
       }
 
-      setUser(mapProfileToUser(supabaseUser, profile));
+      setUser(mapProfileToUser(authUser, profile));
       setVoiceProfile(vp ?? null);
       setIsLoading(false);
     }
 
-    supabase.auth.getUser().then(({ data: { user: u } }) => loadUser(u));
+    client.auth.getUser().then(({ data: { user: u } }) => loadUser(u));
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = client.auth.onAuthStateChange((_event, session) => {
       loadUser(session?.user ?? null);
     });
 
@@ -150,7 +155,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const upgradePlan = async (plan: "starter" | "pro") => {
-    if (!user || !isSupabaseConfigured()) return;
+    if (!user || !isNeonConfigured()) return;
     const { error } = await createClient()
       .from("profiles")
       .update({ plan })
@@ -159,9 +164,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const consumeEpisodeCredit = useCallback(async (): Promise<boolean> => {
-    if (!user || !isSupabaseConfigured()) return false;
+    if (!user || !isNeonConfigured()) return false;
 
-    const supabase = createClient();
+    const client = createClient();
     const today = new Date().toISOString().split("T")[0];
     const needsReset = isNewBillingPeriod(user.billingPeriodStart);
 
@@ -172,7 +177,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     }
 
-    const { error } = await supabase
+    const { error } = await client
       .from("profiles")
       .update({
         episodes_used_this_month: newUsed,
@@ -183,7 +188,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     if (error) {
       console.error("consumeEpisodeCredit error:", error.message);
       if (error.message?.includes("billing_period_start") || error.message?.includes("episodes_used_this_month")) {
-        console.warn("Migration needed: run ALTER TABLE in Supabase SQL Editor. See supabase/schema.sql");
+        console.warn("Schema drift: profiles is missing billing columns. See neon/schema.sql");
       }
       return false;
     }

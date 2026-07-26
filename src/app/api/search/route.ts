@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSessionUser } from "@/lib/neon/auth";
+import { getSql } from "@/lib/neon/db";
 import { sanitizeString } from '@/lib/security/validate';
 
 function escapeIlike(input: string): string {
@@ -8,8 +9,7 @@ function escapeIlike(input: string): string {
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -21,18 +21,23 @@ export async function GET(req: Request) {
       return NextResponse.json({ results: [] });
     }
 
-    const { data, error } = await supabase
-      .from("transcripts")
-      .select("episode_id, text")
-      .eq("user_id", user.id)
-      .textSearch("text", query, { type: "websearch" });
-
-    if (error) {
-      const { data: fallback } = await supabase
-        .from("transcripts")
-        .select("episode_id, text")
-        .eq("user_id", user.id)
-        .ilike("text", `%${escapeIlike(query)}%`);
+    let data: { episode_id: string; text: string }[];
+    try {
+      // Uses the transcripts_text_fts GIN index.
+      data = (await getSql()`
+        select episode_id, text
+        from transcripts
+        where user_id = ${user.id}
+          and to_tsvector('english', text) @@ websearch_to_tsquery('english', ${query})
+      `) as { episode_id: string; text: string }[];
+    } catch {
+      // websearch_to_tsquery rejects some inputs — fall back to a plain scan.
+      const fallback = (await getSql()`
+        select episode_id, text
+        from transcripts
+        where user_id = ${user.id}
+          and text ilike ${`%${escapeIlike(query)}%`}
+      `) as { episode_id: string; text: string }[];
 
       const results = (fallback ?? []).map(row => {
         const idx = row.text.toLowerCase().indexOf(query.toLowerCase());

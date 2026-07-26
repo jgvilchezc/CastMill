@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/neon/client";
 import { useUser } from "@/lib/context/user-context";
 import { PLANS } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
