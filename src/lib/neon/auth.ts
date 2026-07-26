@@ -30,6 +30,12 @@ export function getAuth() {
       baseUrl: process.env.NEON_AUTH_BASE_URL!,
       cookies: {
         secret: process.env.NEON_AUTH_COOKIE_SECRET!,
+        // Neon Auth defaults to SameSite=Strict, which the browser refuses to
+        // send on a top-level cross-site navigation. The OAuth return trip is
+        // exactly that (Google -> Neon's auth host -> here), so with Strict the
+        // app sees no session and proxy.ts bounces the user back to /login.
+        // Lax still blocks CSRF on subresource requests.
+        sameSite: "lax",
       },
     });
   }
